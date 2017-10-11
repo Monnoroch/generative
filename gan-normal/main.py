@@ -40,7 +40,7 @@ class GanNormalModel(object):
         self.real_input = self.data_batch(hparams)
         self.generator_input = self.generator_input(hparams)
         with tf.variable_scope("generator"):
-            self.generated = self.generator(self.generator_input)
+            self.generated = self.generator(self.generator_input, hparams)
 
         # Get discriminator logits for both inputs.
         with tf.variable_scope("discriminator"):
@@ -82,8 +82,10 @@ class GanNormalModel(object):
         tf.summary.scalar("G/cost", self.generator_loss)
         tf.summary.scalar("P_real_on_real/", self.average_probability_real)
         tf.summary.scalar("P_real_on_fake/", self.average_probability_fake)
-        tf.summary.scalar("G/mean", self.mean)
-        tf.summary.scalar("G/stddev", self.stddev)
+        for i in range(len(self.means)):
+            tf.summary.scalar("G/mean:%d" % i, self.means[i])
+        for i in range(len(self.means)):
+            tf.summary.scalar("G/stddev:%d" % i, self.stddevs[i])
         self.summaries = tf.summary.merge_all()
 
     def discriminator(self, input, hparams):
@@ -113,20 +115,32 @@ class GanNormalModel(object):
         biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[classes]))
         return tf.matmul(hidden_layer, weights) + biases
 
-    def generator(self, input):
+    def generator(self, input, hparams):
         """
         Generator is just a linear transformation of the input.
         """
-        self.mean = tf.Variable(tf.constant(0.))
-        # Standard deviation has to be positive, so we make sure it is by computing the absolute value of the variable.
-        self.stddev = tf.sqrt(tf.Variable(tf.constant(1.)) ** 2)
-        return input * self.stddev + self.mean
+        self.means = []
+        self.stddevs = []
+        result = tf.constant(0.)
+        for i in range(len(hparams.input_mean)):
+            mean = tf.Variable(tf.constant(0. + i))
+            # Standard deviation has to be positive, so we make sure it is by computing the absolute value of the variable.
+            stddev = tf.sqrt(tf.Variable(tf.constant(1.)) ** 2)
+            result += tf.random_normal([hparams.batch_size, 1], 0., 1.) * stddev + mean
+            self.means.append(mean)
+            self.stddevs.append(stddev)
+        return result
 
     def data_batch(self, hparams):
         """
         Input data are just samples from N(mean, stddev).
         """
-        return tf.random_normal([hparams.batch_size, 1], hparams.input_mean, hparams.input_stddev)
+        count = len(hparams.input_mean)
+        result = tf.constant(0.)
+        for i in range(count):
+            result += (1./count) * tf.random_normal(
+                [hparams.batch_size, 1], hparams.input_mean[i], hparams.input_stddev[i])
+        return result
 
     def generator_input(self, hparams):
         """
@@ -138,13 +152,8 @@ def print_graph(session, model, step):
     """
     A helper function for printing key training characteristics.
     """
-    real, fake, mean, stddev = session.run([
-        model.average_probability_real, model.average_probability_fake, model.mean, model.stddev
-    ])
-    step += 1
-
-    print("Saved model with step %d; real = %f, fake = %f, mean = %f, stddev = %f" % (
-          step, real, fake, mean, stddev))
+    real, fake = session.run([model.average_probability_real, model.average_probability_fake])
+    print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
 
 
 def main(args):
@@ -159,11 +168,19 @@ def main(args):
     parser.add_argument("--d_learning_rate", type=float, default=0.01, help="The discriminator learning rate")
     parser.add_argument("--g_learning_rate", type=float, default=0.1, help="The generator learning rate")
     parser.add_argument("--d_l2_reg", type=float, default=0.0005, help="The discriminator L2 regularization parameter")
-    parser.add_argument("--input_mean", type=float, default=15., help="The mean of the input dataset")
-    parser.add_argument("--input_stddev", type=float, default=7., help="The standard deviation of the input dataset")
+    parser.add_argument("--input_mean", type=float, default=[], help="The mean of the input dataset", action='append')
+    parser.add_argument("--input_stddev", type=float, default=[], help="The standard deviation of the input dataset", action='append')
     parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
     parser.add_argument("--dropout", type=float, default=0.5, help="The dropout rate to use in the descriminator")
     args = parser.parse_args(args)
+    # Default input mean and stddev.
+    if not args.input_mean:
+        args.input_mean.append(15.)
+    if not args.input_stddev:
+        args.input_stddev.append(7.)
+    if len(args.input_mean) != len(args.input_stddev):
+        print("There must be the same number of input means and standard deviations.")
+        sys.exit(1)
 
     # Create the model.
     model = GanNormalModel(ModelParams(args))
@@ -188,6 +205,14 @@ def main(args):
             # And export all summaries to tensorboard.
             summary_writer.add_summary(session.run(model.summaries), step)
             # saver.save(session, "%s/model.ckpt-%d" % (args.train_dir, step))
+
+        # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
+        for step in range(1000):
+            print_graph(session, model, args.max_steps + step)
+            # First, we run one step of discriminator training.
+            session.run(model.discriminator_train)
+            # And export all summaries to tensorboard.
+            summary_writer.add_summary(session.run(model.summaries), args.max_steps + step)
 
 
 if __name__ == "__main__":
