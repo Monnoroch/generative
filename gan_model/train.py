@@ -4,7 +4,9 @@ import sys
 
 import tensorflow as tf
 
-import model
+from gan_model import model
+from common.hparams import load_hparams, save_hparams
+
 
 def print_graph(session, model, step):
     """
@@ -19,8 +21,7 @@ def main(args):
     The main function to train the model.
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
-    parser.add_argument("--train_dir", required=True, help="The training directory to store all the data")
-    parser.add_argument("--summaries_dir", required=True, help="The training directory to store all the data")
+    parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
     parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
     parser.add_argument("--d_learning_rate", type=float, default=0.01, help="The discriminator learning rate")
@@ -46,11 +47,16 @@ def main(args):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
-    if not os.path.exists(args.train_dir):
-        os.makedirs(args.train_dir)
+    # Initialize experiment files.
+    train_dir = os.path.join(args.experiment_dir, "model")
+    if not os.path.exists(train_dir):
+        os.makedirs(train_dir)
+    summaries_dir = os.path.join(args.experiment_dir, "summaries")
+    hparams = model.ModelParams(load_hparams(args))
+    save_hparams(hparams, args)
 
     # Create the model.
-    model_ops = model.GanNormalModel(model.ModelParams(args), model.TrainingParams(args, training=True))
+    model_ops = model.GanNormalModel(hparams, model.DatasetParams(args), model.TrainingParams(args, training=True))
 
     saver = tf.train.Saver()
     with tf.Session() as session:
@@ -60,7 +66,7 @@ def main(args):
         else:
             session.run(tf.global_variables_initializer())
 
-        summary_writer = tf.summary.FileWriter(args.summaries_dir, session.graph)
+        summary_writer = tf.summary.FileWriter(summaries_dir, session.graph)
 
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
         global_step = session.run(model_ops.global_step)
@@ -81,7 +87,8 @@ def main(args):
             # And export all summaries to tensorboard.
             summary_writer.add_summary(session.run(model_ops.summaries), global_step)
 
-        saver.save(session, "%s/model.ckpt-%d" % (args.train_dir, global_step))
+        # Save experiment data.
+        saver.save(session, os.path.join(train_dir, "checkpoint-%d" % global_step, "data"))
 
 
 if __name__ == "__main__":
