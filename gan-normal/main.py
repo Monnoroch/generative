@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 import tensorflow as tf
@@ -79,6 +80,10 @@ class GanNormalModel(object):
             self.generator_loss, var_list=generator_variables, name="train_generator")
         self.discriminator_train = tf.train.AdamOptimizer(hparams.d_learning_rate).minimize(
             self.discriminator_loss, var_list=discriminator_variables, name="train_discriminator")
+
+        # Set up the global step.
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.increment_global_step = tf.assign_add(self.global_step, 1)
 
         # Add useful graphs to Tensorboard.
         self.average_probability_real = tf.reduce_mean(tf.sigmoid(self.real_ratings))
@@ -209,6 +214,9 @@ def main(args):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
+    if not os.path.exists(args.train_dir):
+        os.makedirs(args.train_dir)
+
     # Create the model.
     model = GanNormalModel(ModelParams(args))
 
@@ -223,8 +231,9 @@ def main(args):
         summary_writer = tf.summary.FileWriter(args.summaries_dir + "/train", session.graph)
 
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
-        for step in range(args.max_steps):
-            print_graph(session, model, step)
+        global_step = session.run(model.global_step)
+        for _ in range(args.max_steps):
+            print_graph(session, model, global_step)
             # First, we run one step of discriminator training.
             for _ in range(max(int(args.discriminator_steps/2), 1)):
                 session.run(model.discriminator_train)
@@ -233,9 +242,14 @@ def main(args):
                 session.run(model.generator_train)
             for _ in range(int(args.discriminator_steps/2)):
                 session.run(model.discriminator_train)
+
+            # Increment global step.
+            session.run(model.increment_global_step)
+            global_step = session.run(model.global_step)
             # And export all summaries to tensorboard.
-            summary_writer.add_summary(session.run(model.summaries), step)
-            # saver.save(session, "%s/model.ckpt-%d" % (args.train_dir, step))
+            summary_writer.add_summary(session.run(model.summaries), global_step)
+
+        saver.save(session, "%s/model.ckpt-%d" % (args.train_dir, global_step))
 
 
 if __name__ == "__main__":
