@@ -23,9 +23,8 @@ def main(args):
     hparams = model.ModelParams(load_hparams(args))
     model_ops = model.GanNormalModel(None, None, model.TrainingParams(None, training=False))
 
-    with tf.variable_scope("discriminator"):
-        input = tf.placeholder(dtype=tf.float32, shape=(1, 1))
-        discriminated = tf.nn.sigmoid(model_ops.discriminator(input, hparams))
+    input = tf.placeholder(dtype=tf.float32, shape=(1, 1))
+    discriminated = model_ops.discriminate(input, hparams)
 
     saver = tf.train.Saver()
     with tf.Session() as session:

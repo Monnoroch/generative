@@ -142,6 +142,10 @@ class GanNormalModel(object):
         biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[output_size]))
         return tf.matmul(hidden_layer, weights) + biases
 
+    def discriminate(self, input, hparams):
+        with tf.variable_scope("discriminator"):
+            return tf.nn.sigmoid(self.discriminator(input, hparams))
+
     def generator(self, input, hparams):
         """
         Generator is just a linear transformation of the input.
