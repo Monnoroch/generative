@@ -73,6 +73,8 @@ class GanNormalModel(object):
         with tf.variable_scope("discriminator", reuse=True):
             self.generated_ratings = self.discriminator(self.generated, model_params)
 
+        self.probs = tf.nn.sigmoid(self.real_ratings)
+
         # Discriminator loss minimizes the discrimination error on both real and fake inputs.
         self.loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             labels=tf.ones_like(self.real_ratings), logits=self.real_ratings))

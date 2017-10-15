@@ -47,7 +47,7 @@ def print_graph(session, model, step, nn_generator, model_data):
         values = np.arange(2 - 12, 2 + 12, 0.025)
         values_count = len(values)
         values = np.reshape(np.concatenate((values, np.repeat(0., 1024 - values_count))), (1024, 1))
-        discriminator_values = session.run(model.real_ratings, feed_dict={model.real_input: values})
+        discriminator_values = session.run(model.probs, feed_dict={model.real_input: values})
         points = []
         for i in range(values_count):
             points.append({
