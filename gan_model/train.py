@@ -39,9 +39,9 @@ Animate[
   Show[
     Plot[{
       0.5,
-      PDF[NormalDistribution[%s, %s], x],
+      PDF[MixtureDistribution[%s, %s], x],
       PDF[NormalDistribution[means[[step]], stddevs[[step]]], x]
-    }, {x, -4, 13}, PlotRange -> {0, 1}],
+    }, {x, -7.5, 10}, PlotRange -> {0, 1}],
     ListLinePlot[
       discriminatorStepData[[step]],
       InterpolationOrder -> 3
@@ -54,6 +54,12 @@ Animate[
   DisplayAllSteps -> True
 ]
 """
+
+def mixture_distribution_weights(means):
+    return "{%s}" % ",".join(map(str, [0.5] * len(means)))
+
+def mixture_distribution_modes(means, stddevs):
+    return "{%s}" % ",".join(map(lambda i: "NormalDistribution[%f, %f]" % (means[i], stddevs[i]), range(len(means))))
 
 def format_list(values):
     if type(values) is not list:
@@ -71,8 +77,8 @@ def format_train_data(model_data):
         format_long_list(model_data["discriminator"]["points"]),
         format_list(model_data["generator"]["means"]),
         format_list(model_data["generator"]["stddevs"]),
-        model_data["data"]["mean"],
-        model_data["data"]["stddev"])
+        mixture_distribution_weights(model_data["data"]["means"]),
+        mixture_distribution_modes(model_data["data"]["means"], model_data["data"]["stddevs"]))
 
 def print_graph(session, model, step, nn_generator, model_data):
     """
@@ -87,7 +93,7 @@ def print_graph(session, model, step, nn_generator, model_data):
         model_data["generator"]["means"].append(mean)
         model_data["generator"]["stddevs"].append(max(stddev, 0.051))
 
-        values = np.arange(-4, 13, 0.1)
+        values = np.arange(-7.5, 10., 0.1)
         values_count = len(values)
         values = np.reshape(np.concatenate((values, np.repeat(0., 1024 - values_count))), (1024, 1))
         discriminator_values = session.run(model.probs, feed_dict={model.real_input: values})
@@ -141,8 +147,8 @@ def main(args):
 
     model_data = {
         "data": {
-            "mean": str(args.input_mean[0]),
-            "stddev": str(args.input_stddev[0]),
+            "means": args.input_mean,
+            "stddevs": args.input_stddev,
         },
         "discriminator": {
             "points": [],
