@@ -28,36 +28,73 @@ def find_max(values):
             max_index = i
     return max_value, max_index
 
+train_data_template = """
+discriminatorStepData = %s;
+
+means = %s;
+
+stddevs = %s;
+
+Animate[
+  Show[
+    Plot[{
+      0.5,
+      PDF[NormalDistribution[%s, %s], x],
+      PDF[NormalDistribution[means[[step]], stddevs[[step]]], x]
+    }, {x, -4, 13}, PlotRange -> {0, 1}],
+    ListLinePlot[
+      discriminatorStepData[[step]],
+      InterpolationOrder -> 3
+    ]
+  ],
+  {step, Range[1, Length[discriminatorStepData]]},
+  AnimationRunning -> True,
+  DefaultDuration -> 25,
+  Deployed -> True,
+  DisplayAllSteps -> True
+]
+"""
+
+def format_list(values):
+    if type(values) is not list:
+        return "%f" % values
+    return "{%s}" % ",".join(map(format_list, values))
+
+def format_long_list(values):
+    if type(values) is not list:
+        return format_list(values)
+    return "{\n  %s\n}" % ",\n  ".join(map(format_list, values))
+
+
+def format_train_data(model_data):
+    return train_data_template % (
+        format_long_list(model_data["discriminator"]["points"]),
+        format_list(model_data["generator"]["means"]),
+        format_list(model_data["generator"]["stddevs"]),
+        model_data["data"]["mean"],
+        model_data["data"]["stddev"])
+
 def print_graph(session, model, step, nn_generator, model_data):
     """
     A helper function for printing key training characteristics.
     """
-    step_data = {}
     if nn_generator:
         real, fake = session.run([model.average_probability_real, model.average_probability_fake])
         print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
     else:
         real, fake, mean, stddev = session.run([model.average_probability_real, model.average_probability_fake, model.mean, model.stddev])
         print("Saved model with step %d; real = %f, fake = %f, mean = %f, stddev = %f" % (step, real, fake, mean, stddev))
-        step_data["generator"] = {
-            "mean": str(mean),
-            "stddev": str(stddev),
-        }
+        model_data["generator"]["means"].append(mean)
+        model_data["generator"]["stddevs"].append(max(stddev, 0.051))
 
-        values = np.arange(2 - 12, 2 + 12, 0.025)
+        values = np.arange(-4, 13, 0.1)
         values_count = len(values)
         values = np.reshape(np.concatenate((values, np.repeat(0., 1024 - values_count))), (1024, 1))
         discriminator_values = session.run(model.probs, feed_dict={model.real_input: values})
         points = []
         for i in range(values_count):
-            points.append({
-                "x": str(values[i][0]),
-                "y": str(discriminator_values[i][0]),
-            })
-        step_data["discriminator"] = {
-            "points": points,
-        }
-    model_data["steps"].append(step_data)
+            points.append([values[i][0], discriminator_values[i][0]])
+        model_data["discriminator"]["points"].append(points)
 
 
 def main(args):
@@ -107,7 +144,13 @@ def main(args):
             "mean": str(args.input_mean[0]),
             "stddev": str(args.input_stddev[0]),
         },
-        "steps": [],
+        "discriminator": {
+            "points": [],
+        },
+        "generator": {
+            "means": [],
+            "stddevs": [],
+        },
     }
 
     saver = tf.train.Saver()
@@ -142,8 +185,8 @@ def main(args):
         # Save experiment data.
         saver.save(session, os.path.join(train_dir, "checkpoint-%d" % global_step, "data"))
 
-    with open(os.path.join(train_dir, "train-data.json"), "w") as file:
-        json.dump(model_data, file, indent=2)
+    with open(os.path.join(train_dir, "train-data.mtmt.txt"), "w") as file:
+        file.write(format_train_data(model_data))
         file.write("\n")
 
 
