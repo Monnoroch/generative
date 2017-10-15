@@ -1,23 +1,63 @@
 import argparse
+import json
 import os
 import sys
 
+import numpy as np
 import tensorflow as tf
 
 from gan_model import model
 from common.hparams import load_hparams, save_hparams
 
 
-def print_graph(session, model, step, nn_generator):
+def find_min(values):
+    min_index = 0
+    min_value = values[min_index]
+    for i in range(len(values)):
+        if values[i] < min_value:
+            min_value = values[i]
+            min_index = i
+    return min_value, min_index
+
+def find_max(values):
+    max_index = 0
+    max_value = values[max_index]
+    for i in range(len(values)):
+        if values[i] > max_value:
+            max_value = values[i]
+            max_index = i
+    return max_value, max_index
+
+def print_graph(session, model, step, nn_generator, model_data):
     """
     A helper function for printing key training characteristics.
     """
+    step_data = {}
     if nn_generator:
         real, fake = session.run([model.average_probability_real, model.average_probability_fake])
         print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
     else:
         real, fake, mean, stddev = session.run([model.average_probability_real, model.average_probability_fake, model.mean, model.stddev])
         print("Saved model with step %d; real = %f, fake = %f, mean = %f, stddev = %f" % (step, real, fake, mean, stddev))
+        step_data["generator"] = {
+            "mean": str(mean),
+            "stddev": str(stddev),
+        }
+
+        values = np.arange(2 - 12, 2 + 12, 0.025)
+        values_count = len(values)
+        values = np.reshape(np.concatenate((values, np.repeat(0., 1024 - values_count))), (1024, 1))
+        discriminator_values = session.run(model.real_ratings, feed_dict={model.real_input: values})
+        points = []
+        for i in range(values_count):
+            points.append({
+                "x": str(values[i][0]),
+                "y": str(discriminator_values[i][0]),
+            })
+        step_data["discriminator"] = {
+            "points": points,
+        }
+    model_data["steps"].append(step_data)
 
 
 def main(args):
@@ -62,6 +102,14 @@ def main(args):
     # Create the model.
     model_ops = model.GanNormalModel(hparams, model.DatasetParams(args), model.TrainingParams(args, training=True))
 
+    model_data = {
+        "data": {
+            "mean": str(args.input_mean[0]),
+            "stddev": str(args.input_stddev[0]),
+        },
+        "steps": [],
+    }
+
     saver = tf.train.Saver()
     with tf.Session() as session:
         # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
@@ -75,7 +123,7 @@ def main(args):
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step, args.nn_generator)
+            print_graph(session, model_ops, global_step, args.nn_generator, model_data)
             # First, we run one step of discriminator training.
             for _ in range(max(int(args.discriminator_steps/2), 1)):
                 session.run(model_ops.discriminator_train)
@@ -93,6 +141,10 @@ def main(args):
 
         # Save experiment data.
         saver.save(session, os.path.join(train_dir, "checkpoint-%d" % global_step, "data"))
+
+    with open(os.path.join(train_dir, "train-data.json"), "w") as file:
+        json.dump(model_data, file, indent=2)
+        file.write("\n")
 
 
 if __name__ == "__main__":
