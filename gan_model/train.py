@@ -8,12 +8,16 @@ from gan_model import model
 from common.hparams import load_hparams, save_hparams
 
 
-def print_graph(session, model, step):
+def print_graph(session, model, step, nn_generator):
     """
     A helper function for printing key training characteristics.
     """
-    real, fake = session.run([model.average_probability_real, model.average_probability_fake])
-    print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
+    if nn_generator:
+        real, fake = session.run([model.average_probability_real, model.average_probability_fake])
+        print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
+    else:
+        real, fake, mean, stddev = session.run([model.average_probability_real, model.average_probability_fake, model.mean, model.stddev])
+        print("Saved model with step %d; real = %f, fake = %f, mean = %f, stddev = %f" % (step, real, fake, mean, stddev))
 
 
 def main(args):
@@ -71,7 +75,7 @@ def main(args):
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step)
+            print_graph(session, model_ops, global_step, args.nn_generator)
             # First, we run one step of discriminator training.
             for _ in range(max(int(args.discriminator_steps/2), 1)):
                 session.run(model_ops.discriminator_train)
