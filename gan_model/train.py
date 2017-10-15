@@ -104,8 +104,8 @@ def main(args):
 
     model_data = {
         "data": {
-            "means": map(str, args.input_mean),
-            "stddevs": map(str, args.input_stddev),
+            "mean": str(args.input_mean[0]),
+            "stddev": str(args.input_stddev[0]),
         },
         "steps": [],
     }
