@@ -122,7 +122,7 @@ def print_graph(session, model, step, model_data, tparams):
     for i in range(len(pdf)):
         begin = values[i]
         end = values[i + 1]
-        middle = (end - begin) / 2
+        middle = begin + (end - begin) / 2
         generator_points.append([middle, pdf[i]])
     model_data["generator"]["points"].append(generator_points)
 
