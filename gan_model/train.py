@@ -43,7 +43,7 @@ Animate[
     ListLinePlot[
       generatorStepData[[step]],
       InterpolationOrder -> 1
-    ]
+    ],
     ListLinePlot[
       discriminatorStepData[[step]],
       InterpolationOrder -> 3
