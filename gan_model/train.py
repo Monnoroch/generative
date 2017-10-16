@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -31,17 +32,18 @@ def find_max(values):
 train_data_template = """
 discriminatorStepData = %s;
 
-means = %s;
-
-stddevs = %s;
+generatorStepData = %s;
 
 Animate[
   Show[
     Plot[{
       0.5,
-      PDF[MixtureDistribution[%s, %s], x],
-      PDF[NormalDistribution[means[[step]], stddevs[[step]]], x]
+      PDF[MixtureDistribution[%s, %s], x]
     }, {x, -7.5, 10}, PlotRange -> {0, 1}],
+    ListLinePlot[
+      generatorStepData[[step]],
+      InterpolationOrder -> 1
+    ]
     ListLinePlot[
       discriminatorStepData[[step]],
       InterpolationOrder -> 3
@@ -75,32 +77,54 @@ def format_long_list(values):
 def format_train_data(model_data):
     return train_data_template % (
         format_long_list(model_data["discriminator"]["points"]),
-        format_list(model_data["generator"]["means"]),
-        format_list(model_data["generator"]["stddevs"]),
+        format_long_list(model_data["generator"]["points"]),
         mixture_distribution_weights(model_data["data"]["means"]),
         mixture_distribution_modes(model_data["data"]["means"], model_data["data"]["stddevs"]))
 
-def print_graph(session, model, step, nn_generator, model_data):
+def print_graph(session, model, step, model_data, tparams):
     """
     A helper function for printing key training characteristics.
     """
-    if nn_generator:
-        real, fake = session.run([model.average_probability_real, model.average_probability_fake])
-        print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
-    else:
-        real, fake, mean, stddev = session.run([model.average_probability_real, model.average_probability_fake, model.mean, model.stddev])
-        print("Saved model with step %d; real = %f, fake = %f, mean = %f, stddev = %f" % (step, real, fake, mean, stddev))
-        model_data["generator"]["means"].append(mean)
-        model_data["generator"]["stddevs"].append(max(stddev, 0.051))
+    real, fake = session.run([model.average_probability_real, model.average_probability_fake])
+    print("Saved model with step %d; real = %f, fake = %f" % (step, real, fake))
 
-        values = np.arange(-7.5, 10., 0.1)
-        values_count = len(values)
-        values = np.reshape(np.concatenate((values, np.repeat(0., 1024 - values_count))), (1024, 1))
-        discriminator_values = session.run(model.probs, feed_dict={model.real_input: values})
-        points = []
-        for i in range(values_count):
-            points.append([values[i][0], discriminator_values[i][0]])
-        model_data["discriminator"]["points"].append(points)
+    batch_size = tparams.batch_size
+    interval_begin = -7.5
+    interval_end = 10.
+    interval_step = 0.1
+    values = np.arange(interval_begin, interval_end, interval_step)
+    values_count = len(values)
+    values = np.reshape(np.concatenate((values, np.repeat(0., batch_size - values_count))), (batch_size, 1))
+    discriminator_values = session.run(model.probs, feed_dict={model.real_input: values})
+    points = []
+    for i in range(values_count):
+        points.append([values[i][0], discriminator_values[i][0]])
+    model_data["discriminator"]["points"].append(points)
+
+    # Treat values as intervals. (value[i], value[i+1]).
+    # For every interval, compute generator PDF value.
+    # Output pointe ((value[i+1] - value[i])/2, PDF[i]).
+
+    interval_step  = 0.25
+    values = np.arange(interval_begin, interval_end, interval_step)
+    pdf = np.zeros((len(values) - 1), dtype=int)
+    sum_pdf = np.sum(pdf)
+    while sum_pdf < batch_size * 1000:
+        samples = session.run(model.generated)
+        intervals = np.floor((np.reshape(samples, (batch_size,)) - interval_begin) / interval_step).astype(int)
+        intervals = intervals[(intervals > 0) & (intervals < len(pdf))]
+        unique, counts = np.unique(intervals, return_counts=True)
+        pdf[unique] += counts
+        sum_pdf = np.sum(pdf)
+
+    generator_points = []
+    pdf = (pdf * 1.) / np.sum(pdf)
+    for i in range(len(pdf)):
+        begin = values[i]
+        end = values[i + 1]
+        middle = (end - begin) / 2
+        generator_points.append([middle, pdf[i]])
+    model_data["generator"]["points"].append(generator_points)
 
 
 def main(args):
@@ -143,7 +167,8 @@ def main(args):
     save_hparams(hparams, args)
 
     # Create the model.
-    model_ops = model.GanNormalModel(hparams, model.DatasetParams(args), model.TrainingParams(args, training=True))
+    tparams = model.TrainingParams(args, training=True)
+    model_ops = model.GanNormalModel(hparams, model.DatasetParams(args), tparams)
 
     model_data = {
         "data": {
@@ -154,8 +179,7 @@ def main(args):
             "points": [],
         },
         "generator": {
-            "means": [],
-            "stddevs": [],
+            "points": [],
         },
     }
 
@@ -172,7 +196,7 @@ def main(args):
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step, args.nn_generator, model_data)
+            print_graph(session, model_ops, global_step, model_data, tparams)
             # First, we run one step of discriminator training.
             for _ in range(max(int(args.discriminator_steps/2), 1)):
                 session.run(model_ops.discriminator_train)
