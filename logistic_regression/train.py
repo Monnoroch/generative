@@ -18,8 +18,8 @@ Animate[
     %s,
     PDF[NormalDistribution[%f, %f], x]/(%s),
     1/(1 + Exp[-(x * discriminatorParam1[[step]] + discriminatorParam2[[step]])])
-  }, {x, -7.5, 10.}, PlotRange -> {0, 1}]
-  ],  {step, Range[1, Length[discriminatorParam1]]},
+  }, {x, -7.5, 10.}, PlotRange -> {0, 1}],
+  {step, Range[1, Length[discriminatorParam1]]},
   AnimationRunning -> True,
   DefaultDuration -> 25,
   Deployed -> True,
