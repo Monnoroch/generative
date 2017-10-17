@@ -56,9 +56,9 @@ class LogisticRegressionModel(object):
 
     def discriminator(self, input):
         output_size = 1
-        weights = tf.get_variable("weights", initializer=tf.truncated_normal([output_size], stddev=0.1))
-        biases = tf.get_variable("biases", initializer=tf.constant(0.1, shape=[output_size]))
-        return input * weights + biases
+        self.param1 = tf.get_variable("weights", initializer=tf.truncated_normal([output_size], stddev=0.1))
+        self.param2 = tf.get_variable("biases", initializer=tf.constant(0.1, shape=[output_size]))
+        return input * self.param1 + self.param2
 
     def input_batch(self, dataset_params, batch_size):
         input_mean = tf.constant(dataset_params.input_mean, dtype=tf.float32)
@@ -66,11 +66,11 @@ class LogisticRegressionModel(object):
         count = len(dataset_params.input_mean)
         labels = tf.contrib.distributions.Categorical(
             probs=[1./count] * count).sample(sample_shape=[batch_size])
-        componens = []
+        components = []
         for i in range(batch_size):
-            componens.append(
+            components.append(
                 tf.contrib.distributions.Normal(
                     loc=input_mean[labels[i]],
                     scale=input_stddev[labels[i]]).sample(sample_shape=[1]))
-        samples = tf.concat(componens, 0)
+        samples = tf.concat(components, 0)
         return labels, samples
