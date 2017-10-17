@@ -105,7 +105,7 @@ def print_graph(session, model, step, model_data, tparams):
     # For every interval, compute generator PDF value.
     # Output pointe ((value[i+1] - value[i])/2, PDF[i]).
 
-    interval_step  = 0.25
+    interval_step = 0.25
     values = np.arange(interval_begin, interval_end, interval_step)
     pdf = np.zeros((len(values) - 1), dtype=int)
     sum_pdf = np.sum(pdf)
@@ -118,7 +118,7 @@ def print_graph(session, model, step, model_data, tparams):
         sum_pdf = np.sum(pdf)
 
     generator_points = []
-    pdf = (pdf * 1.) / np.sum(pdf)
+    pdf = (pdf * 1.) / np.sum(pdf * interval_step)
     for i in range(len(pdf)):
         begin = values[i]
         end = values[i + 1]
