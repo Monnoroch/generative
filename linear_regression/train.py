@@ -17,7 +17,7 @@ Animate[
   Plot[{
     %f * x + %f,
     discriminatorParam1[[step]] * x + discriminatorParam2[[step]]
-  }, {x, -7.5, 10.}, PlotRange -> {0, 1}],
+  }, {x, 0, 5.}, PlotRange -> {0, 5}],
   {step, Range[1, Length[discriminatorParam1]]},
   AnimationRunning -> True,
   DefaultDuration -> 25,
