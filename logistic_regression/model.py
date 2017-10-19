@@ -48,8 +48,9 @@ class LogisticRegressionModel(object):
         if training_params.l2_reg != 0.0:
             self.loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in variables])
 
-        self.train = tf.train.AdamOptimizer(training_params.learning_rate).minimize(
-            self.loss, var_list=variables, name="train")
+        self.train = tf.train.AdamOptimizer(
+            training_params.learning_rate + tf.cast(self.global_step, dtype=tf.float32) * 1./2000).minimize(
+                self.loss, var_list=variables, name="train")
 
         tf.summary.scalar("Loss", self.loss)
         self.summaries = tf.summary.merge_all()
