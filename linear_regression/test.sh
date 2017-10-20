@@ -1,3 +1,5 @@
+echo "Running $0..."
+
 set +e
 
 PYTHONPATH=. python linear_regression/train.py --experiment_dir test-exps/linear_regression \
