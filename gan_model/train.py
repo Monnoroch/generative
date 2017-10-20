@@ -75,7 +75,7 @@ def main(args):
         # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step, args.nn_generator)
+            print_graph(session, model_ops, global_step, hparams.nn_generator)
             # First, we run one step of discriminator training.
             for _ in range(max(int(args.discriminator_steps/2), 1)):
                 session.run(model_ops.discriminator_train)
