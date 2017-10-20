@@ -1,0 +1,16 @@
+markdown: kramdown
+higlighter: pygments
+paginate: 6
+plugins: [jekyll-paginate,jekyll-admin]
+title: "Max Strakhov Data Science Blog"
+description: "Blog about data science and machine learning"
+url: "https://monnoroch.github.io/generative"
+timezone: Europe/Moscow
+future: false
+#jekyll_admin:
+#  hidden_links:
+#    - posts
+#    - pages
+#    - staticfiles
+#    - datafiles
+#    - configuration

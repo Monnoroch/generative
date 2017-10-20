@@ -95,7 +95,10 @@ ENV/
 .ropeproject
 
 # mkdocs documentation
-/site
+# /site
+
+# jekyll build
+/site/_site
 
 # mypy
 .mypy_cache/
