@@ -51,7 +51,7 @@ def main(args):
 
         summary_writer = tf.summary.FileWriter(summaries_dir, session.graph)
 
-        # The main training loop. On each interation we train both the discriminator and the generator on one minibatch.
+        # The main training loop. On each interation we train the model on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
             print_graph(session, model_ops, global_step)

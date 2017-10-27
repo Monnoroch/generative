@@ -38,30 +38,42 @@ class LinearRegressionModel(object):
         if not training_params.training:
             return
 
+        # Compute the loss funstion -- L2 distance between real and predicted labels, which is equal to the
+        # cross-entropy between real and predicted labels.
         labels, samples = self.input_batch(dataset_params, training_params.batch_size)
         with tf.variable_scope("network") as scope:
             predicted_labels = self.predicted_labels(samples)
             variables = [v for v in tf.global_variables() if v.name.startswith(scope.name)]
 
         self.loss = tf.reduce_mean(tf.square(labels - predicted_labels))
+
+        # Add optional L2 regularization.
         if training_params.l2_reg != 0.0:
             self.loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in variables])
 
+        # Train the model with Adam.
         self.train = tf.train.AdamOptimizer(training_params.learning_rate).minimize(
             self.loss, var_list=variables, name="train")
 
+        # Export summaries.
         tf.summary.scalar("Loss", self.loss)
         tf.summary.scalar("Params/1", self.param1[0])
         tf.summary.scalar("Params/2", self.param2[0])
         self.summaries = tf.summary.merge_all()
 
     def predicted_labels(self, input):
+        """
+        The linear regression network.
+        """
         output_size = 1
         self.param1 = tf.get_variable("weights", initializer=tf.truncated_normal([output_size], stddev=0.1))
         self.param2 = tf.get_variable("biases", initializer=tf.constant(0.1, shape=[output_size]))
         return input * self.param1 + self.param2
 
     def input_batch(self, dataset_params, batch_size):
+        """
+        The input batch generator.
+        """
         samples = tf.random_uniform([batch_size], 0., 10.)
         noise = tf.random_normal([batch_size], mean=0., stddev=1.)
         labels = dataset_params.input_param1 * samples + dataset_params.input_param2 + noise
