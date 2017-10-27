@@ -14,7 +14,6 @@ def main(args):
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
     parser.add_argument("--load_checkpoint", required=True, help="Continue training from a checkpoint")
-    parser.add_argument("--samples", type=int, default=1, help="The number of samples to generate")
     args = parser.parse_args(args)
 
     args.experiment_dir = os.path.dirname(os.path.dirname(os.path.dirname(args.load_checkpoint)))
@@ -43,7 +42,7 @@ def main(args):
                 continue
             example = float(line)
             result = session.run(discriminated, feed_dict={input: [[example]]})
-            print("%f\t%s" % (result[0][0], result[0][0] > 0))
+            print("%f\t%s" % (result[0][0], result[0][0] > 0.5))
 
 
 if __name__ == "__main__":
