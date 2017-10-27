@@ -1,5 +1,6 @@
 rm -rf test-exps
 
+export PYTHONPATH=.
 $1
 exitcode=$?
 

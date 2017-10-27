@@ -30,6 +30,10 @@ class TrainingParams(object):
 
 
 class LogisticRegressionModel(object):
+    """
+    Logistic Regression model -- a linear model for binary classification.
+    This version of the model operates input data, generated from two normally distributed classes.
+    """
     def __init__(self, dataset_params, training_params):
         # Set up the global step.
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
