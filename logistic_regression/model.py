@@ -38,6 +38,7 @@ class LogisticRegressionModel(object):
         if not training_params.training:
             return
 
+        # Compute the loss funstion -- cross-entropy between real and predicted labels.
         labels, samples = self.input_batch(dataset_params, training_params.batch_size)
         with tf.variable_scope("discriminator") as scope:
             predicted_labels = self.discriminator(samples)
@@ -45,22 +46,33 @@ class LogisticRegressionModel(object):
 
         self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             labels=tf.cast(labels, tf.float32), logits=predicted_labels))
+
+        # Add optional L2 regularization.
         if training_params.l2_reg != 0.0:
             self.loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in variables])
 
+        # Train the model with Adam.
         self.train = tf.train.AdamOptimizer(training_params.learning_rate).minimize(
             self.loss, var_list=variables, name="train")
 
+        # Export summaries.
         tf.summary.scalar("Loss", self.loss)
         self.summaries = tf.summary.merge_all()
 
     def discriminator(self, input):
+        """
+        The discriminator network to classify inputs. Returns logits.
+        """
         output_size = 1
         self.param1 = tf.get_variable("weights", initializer=tf.truncated_normal([output_size], stddev=0.1))
         self.param2 = tf.get_variable("biases", initializer=tf.constant(0.1, shape=[output_size]))
         return input * self.param1 + self.param2
 
     def input_batch(self, dataset_params, batch_size):
+        """
+        The input batch generator.
+        Generates random class labels first and then samples from the corresponding normal distribuitons.
+        """
         input_mean = tf.constant(dataset_params.input_mean, dtype=tf.float32)
         input_stddev = tf.constant(dataset_params.input_stddev, dtype=tf.float32)
         count = len(dataset_params.input_mean)
