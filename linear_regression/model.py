@@ -30,6 +30,11 @@ class TrainingParams(object):
 
 
 class LinearRegressionModel(object):
+    """
+    Linear Regression model -- a linear model for regression.
+    This version of the model operates input data, generated from a uniform distribution with
+    normally distributed noise.
+    """
     def __init__(self, dataset_params, training_params):
         # Set up the global step.
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
