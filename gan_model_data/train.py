@@ -4,7 +4,7 @@ import sys
 
 import tensorflow as tf
 
-from gan_model import model
+from gan_model_data import model
 from common.hparams import load_hparams, save_hparams
 
 
