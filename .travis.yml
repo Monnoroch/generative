@@ -8,5 +8,6 @@ python:
 install:
   - pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.3.0-cp27-none-linux_x86_64.whl
 
-script: echo "Build."
- 
+script:
+  - tests/run_tests.sh
+
