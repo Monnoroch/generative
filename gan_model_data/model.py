@@ -120,24 +120,23 @@ class GanNormalModel(object):
         Discriminator is a theee-layer fully connected NN.
         """
         # First fully connected layer with N features and optional dropout.
-        input_size = 1
-        features = hparams.discriminator_features
-        weights = tf.get_variable("weights_1", initializer=tf.truncated_normal([input_size, features], stddev=0.1))
-        biases = tf.get_variable("biases_1", initializer=tf.constant(0.1, shape=[features]))
-        hidden_layer = tf.nn.relu(tf.matmul(input, weights) + biases)
-        if hparams.dropout != 0.0:
-            hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
 
-        # Second fully connected layer with N features and optional dropout.
-        features = hparams.discriminator_features
-        weights = tf.get_variable("weights_2", initializer=tf.truncated_normal([input_size, features], stddev=0.1))
-        biases = tf.get_variable("biases_2", initializer=tf.constant(0.1, shape=[features]))
-        hidden_layer = tf.nn.relu(tf.matmul(input, weights) + biases)
-        if hparams.dropout != 0.0:
-            hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
+        input_size = 1
+        new_features = input_size
+        hidden_layer = input
+
+        for i in range(len(hparams.discriminator_features)):
+            features = new_features
+            new_features = hparams.discriminator_features[i]
+            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.1))
+            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0.1, shape=[new_features]))
+            hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
+            if hparams.dropout != 0.0:
+                hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
 
         # Final linear layer to compute the classifier's logits.
         output_size = 1
+        features = new_features
         weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.1))
         biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[output_size]))
         return tf.matmul(hidden_layer, weights) + biases
@@ -157,21 +156,20 @@ class GanNormalModel(object):
                 self.stddev = tf.sqrt(tf.Variable(tf.constant(1.), name="stddev") ** 2)
                 return input * self.stddev + self.mean
 
-            # First fully connected layer with N features.
             input_size = 1
-            features = hparams.generator_features
-            weights = tf.get_variable("weights_1", initializer=tf.truncated_normal([input_size, features], stddev=0.1))
-            biases = tf.get_variable("biases_1", initializer=tf.constant(0.1, shape=[features]))
-            hidden_layer = tf.nn.relu(tf.matmul(input, weights) + biases)
+            new_features = input_size
+            hidden_layer = input
 
-            # Second fully connected layer with N features.
-            features = hparams.generator_features
-            weights = tf.get_variable("weights_2", initializer=tf.truncated_normal([input_size, features], stddev=0.1))
-            biases = tf.get_variable("biases_2", initializer=tf.constant(0.1, shape=[features]))
-            hidden_layer = tf.nn.relu(tf.matmul(input, weights) + biases)
+            for i in range(len(hparams.generator_features)):
+                features = new_features
+                new_features = hparams.generator_features[i]
+                weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.1))
+                biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0.1, shape=[new_features]))
+                hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
 
             # Final linear layer to generate the example.
             output_size = 1
+            features = new_features
             weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.1))
             biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[output_size]))
             return tf.matmul(hidden_layer, weights) + biases

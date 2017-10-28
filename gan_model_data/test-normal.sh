@@ -5,7 +5,7 @@ set +e
 python gan_model_data/train.py --experiment_dir test-exps/gan-normal \
     --d_l2_reg 0.01 --input_mean 7 --input_stddev 1.5 --input_mean -1 --input_stddev 2 \
     --discriminator_steps 1 --generator_steps 1 --d_learning_rate 0.01 --g_learning_rate 0.01 --g_l2_reg 0.01 \
-    --dropout 0.1 --generator_features 10 --discriminator_features 10 \
+    --dropout 0.1 --generator_features 10 --discriminator_features 10 --discriminator_features 5 \
     --batch_size 10 --max_steps 2
 
 python gan_model_data/train.py --experiment_dir test-exps/gan-normal \
