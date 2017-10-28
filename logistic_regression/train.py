@@ -1,11 +1,11 @@
 import argparse
-import os
 import sys
 
 import numpy as np
 import tensorflow as tf
 
 from logistic_regression import model
+from common.experiment import Experiment
 
 
 def print_graph(session, model, step):
@@ -39,11 +39,7 @@ def main(args):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
-    # Initialize experiment files.
-    train_dir = os.path.join(args.experiment_dir, "model")
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
-    summaries_dir = os.path.join(args.experiment_dir, "summaries")
+    experiment = Experiment(args.experiment_dir)
 
     # Create the model.
     tparams = model.TrainingParams(args, training=True)
@@ -57,7 +53,7 @@ def main(args):
         else:
             session.run(tf.global_variables_initializer())
 
-        summary_writer = tf.summary.FileWriter(summaries_dir, session.graph)
+        summary_writer = tf.summary.FileWriter(experiment.summaries_dir(), session.graph)
 
         # The main training loop. On each interation we train the model on one minibatch.
         global_step = session.run(model_ops.global_step)
@@ -72,7 +68,7 @@ def main(args):
             summary_writer.add_summary(session.run(model_ops.summaries), global_step)
 
         # Save experiment data.
-        saver.save(session, os.path.join(train_dir, "checkpoint-%d" % global_step, "data"))
+        saver.save(session, experiment.checkpoint(global_step))
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 import argparse
-import os
 import sys
 
 import numpy as np
 import tensorflow as tf
 
 from linear_regression import model
+from common.experiment import Experiment
 
 
 def print_graph(session, model, step):
@@ -21,7 +21,7 @@ def main(args):
     The main function to train the model.
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
-    parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
+    parser.add_argument("--experiment_dir", required=True, help="The experiment directory to store all the data")
     parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
     parser.add_argument("--learning_rate", type=float, default=0.01, help="The learning rate")
@@ -31,11 +31,7 @@ def main(args):
     parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
     args = parser.parse_args(args)
 
-    # Initialize experiment files.
-    train_dir = os.path.join(args.experiment_dir, "model")
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
-    summaries_dir = os.path.join(args.experiment_dir, "summaries")
+    experiment = Experiment(args.experiment_dir)
 
     # Create the model.
     tparams = model.TrainingParams(args, training=True)
@@ -49,7 +45,7 @@ def main(args):
         else:
             session.run(tf.global_variables_initializer())
 
-        summary_writer = tf.summary.FileWriter(summaries_dir, session.graph)
+        summary_writer = tf.summary.FileWriter(experiment.summaries_dir(), session.graph)
 
         # The main training loop. On each interation we train the model on one minibatch.
         global_step = session.run(model_ops.global_step)
@@ -64,7 +60,7 @@ def main(args):
             summary_writer.add_summary(session.run(model_ops.summaries), global_step)
 
         # Save experiment data.
-        saver.save(session, os.path.join(train_dir, "checkpoint-%d" % global_step, "data"))
+        saver.save(session, experiment.checkpoint(global_step))
 
 
 if __name__ == "__main__":

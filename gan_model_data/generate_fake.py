@@ -1,11 +1,10 @@
 import argparse
-import os
 import sys
 
 import tensorflow as tf
 
 from gan_model_data import model
-from common.hparams import load_hparams
+from common.experiment import Experiment
 
 
 def main(args):
@@ -17,10 +16,10 @@ def main(args):
     parser.add_argument("--samples", type=int, default=1, help="The number of samples to generate")
     args = parser.parse_args(args)
 
-    args.experiment_dir = os.path.dirname(os.path.dirname(os.path.dirname(args.load_checkpoint)))
+    experiment = Experiment.from_checkpoint(args.load_checkpoint)
+    hparams = experiment.load_hparams(model.ModelParams)
 
     # Create the model.
-    hparams = model.ModelParams(load_hparams(args))
     model_ops = model.GanNormalModel(None, None, model.TrainingParams(None, training=False))
 
     generator_input = model_ops.generator_input(args.samples)
