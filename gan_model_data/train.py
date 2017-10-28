@@ -38,8 +38,8 @@ def main(args):
     parser.add_argument("--discriminator_steps", type=int, default=1, help="The number of steps to train the descriminator on each iteration")
     parser.add_argument("--generator_steps", type=int, default=1, help="The number of steps to train the generator on each iteration")
     parser.add_argument("--nn_generator", default=False, action="store_true", help="Whether to use a neural network as a generator")
-    parser.add_argument("--generator_features", default=256, type=int, help="The number of features in generators hidden layers")
-    parser.add_argument("--discriminator_features", default=256, type=int, help="The number of features in discriminators hidden layers")
+    parser.add_argument("--generator_features", default=[], action="append", type=int, help="The number of features in generators hidden layers")
+    parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     args = parser.parse_args(args)
     # Default input mean and stddev.
     if not args.input_mean:
