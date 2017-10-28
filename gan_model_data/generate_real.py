@@ -1,11 +1,10 @@
 import argparse
-import os
 import sys
 
 import tensorflow as tf
 
 from gan_model_data import model
-from common.hparams import load_hparams
+from common.experiment import Experiment
 
 
 def main(args):
@@ -27,10 +26,10 @@ def main(args):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
-    args.experiment_dir = os.path.dirname(os.path.dirname(os.path.dirname(args.load_checkpoint)))
+    experiment = Experiment.from_checkpoint(args.load_checkpoint)
+    hparams = experiment.load_hparams(model.ModelParams)
 
     # Create the model.
-    hparams = model.ModelParams(load_hparams(args))
     dataset = model.DatasetParams(args)
     model_ops = model.GanNormalModel(None, None, model.TrainingParams(None, training=False))
 
