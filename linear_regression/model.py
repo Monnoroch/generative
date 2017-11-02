@@ -49,12 +49,13 @@ class LinearRegressionModel(object):
         with tf.variable_scope("network") as scope:
             predicted_labels = self.predicted_labels(samples)
             variables = [v for v in tf.global_variables() if v.name.startswith(scope.name)]
+            l2_reg_variables = [v for v in variables if v.name.find("weights") != -1]
 
         self.loss = tf.reduce_mean(tf.square(labels - predicted_labels))
 
         # Add optional L2 regularization.
         if training_params.l2_reg != 0.0:
-            self.loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in variables])
+            self.loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in l2_reg_variables])
 
         # Train the model with Adam.
         self.train = tf.train.AdamOptimizer(training_params.learning_rate).minimize(

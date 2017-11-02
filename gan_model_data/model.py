@@ -86,13 +86,18 @@ class GanNormalModel(object):
 
         with tf.variable_scope("generator") as scope:
             generator_variables = [v for v in tf.global_variables() if v.name.startswith(scope.name)]
+            l2_reg_generator_variables = [v for v in generator_variables if v.name.find("weights") != -1]
         with tf.variable_scope("discriminator") as scope:
             discriminator_variables = [v for v in tf.global_variables() if v.name.startswith(scope.name)]
+            l2_reg_discriminator_variables = [v for v in discriminator_variables if v.name.find("weights") != -1]
+
         # Optionally add L2 regularization to the discriminator.
         if training_params.d_l2_reg != 0.0:
-            self.discriminator_loss += training_params.d_l2_reg * add_n([tf.nn.l2_loss(v) for v in discriminator_variables])
+            self.discriminator_loss += training_params.d_l2_reg * add_n(
+                [tf.nn.l2_loss(v) for v in l2_reg_discriminator_variables])
         if training_params.g_l2_reg != 0.0:
-            self.generator_loss += training_params.g_l2_reg * add_n([tf.nn.l2_loss(v) for v in generator_variables])
+            self.generator_loss += training_params.g_l2_reg * add_n(
+                [tf.nn.l2_loss(v) for v in l2_reg_generator_variables])
 
         # Optimize losses with Adam optimizer.
         self.generator_train = tf.train.AdamOptimizer(training_params.g_learning_rate).minimize(
