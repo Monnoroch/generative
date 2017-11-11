@@ -39,7 +39,7 @@ def main(args):
 
     # Create the model.
     dataset_value = make_dataset(dataset.DatasetParams(args))
-    model_ops = model.LinearRegressionModel(dataset_value, model.TrainingParams(args, training=True))
+    model_ops = model.LinearRegressionModel(dataset_value, model.TrainingParams(args))
 
     saver = tf.train.Saver()
     with tf.Session() as session:
