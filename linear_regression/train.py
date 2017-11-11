@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from linear_regression import model
+from linear_regression import model, dataset
 from common.experiment import Experiment
 
 
@@ -14,6 +14,10 @@ def print_graph(session, model, step):
     """
     loss = session.run(model.loss)
     print("Model on step %d has loss = %f" % (step, loss))
+
+
+def make_dataset(params):
+    return dataset.linear_dependent_with_error(params).make_one_shot_iterator()
 
 
 def main(args):
@@ -34,8 +38,8 @@ def main(args):
     experiment = Experiment(args.experiment_dir)
 
     # Create the model.
-    tparams = model.TrainingParams(args, training=True)
-    model_ops = model.LinearRegressionModel(model.DatasetParams(args), tparams)
+    dataset_value = make_dataset(dataset.DatasetParams(args))
+    model_ops = model.LinearRegressionModel(dataset_value, model.TrainingParams(args, training=True))
 
     saver = tf.train.Saver()
     with tf.Session() as session:
