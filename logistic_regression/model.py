@@ -12,9 +12,6 @@ class TrainingParams(object):
     All training hyperparameters that should be configured from command line should go here.
     """
     def __init__(self, args, training):
-        self.training = training
-        if not training:
-            return
         self.learning_rate = args.learning_rate
         self.l2_reg = args.l2_reg
 
@@ -28,9 +25,6 @@ class LogisticRegressionModel(object):
         # Set up the global step.
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.increment_global_step = tf.assign_add(self.global_step, 1)
-
-        if not training_params.training:
-            return
 
         # Compute the loss funstion -- cross-entropy between real and predicted labels.
         labels, samples = dataset.get_next()
