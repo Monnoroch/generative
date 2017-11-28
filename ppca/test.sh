@@ -2,10 +2,27 @@ echo "Running $0..."
 
 set +e
 
-python logistic_regression/train.py --experiment_dir test-exps/logistic_regression \
-    --l2_reg 0.01 --learning_rate 0.01 --input_mean 4 --input_stddev 1.5 --input_mean -2 --input_stddev 1 \
-    --batch_size 3 --max_steps 2
+STEPS=2
+EXP_NAME=test-exps/ppca
 
-python logistic_regression/train.py --experiment_dir test-exps/logistic_regression \
-    --l2_reg 0.05 --learning_rate 0.05 --input_mean 6 --input_stddev 2.5 --input_mean -1 --input_stddev 2 \
-    --batch_size 4 --max_steps 2 --load_checkpoint test-exps/logistic_regression/model/checkpoint-2/data
+python ppca/train.py \
+    --experiment_dir $EXP_NAME \
+    --batch_size 8 \
+    --learning_rate 0.01 \
+    --latent_space_size 1 \
+    --input_mean 0.5 \
+    --input_mean 1. \
+    --input_stddev 1. \
+    --input_stddev 0.1 \
+    --max_steps $STEPS
+
+python ppca/train.py \
+    --experiment_dir $EXP_NAME \
+    --batch_size 9 \
+    --learning_rate 0.02 \
+    --input_mean 0.6 \
+    --input_mean 1.1 \
+    --input_stddev 0.9 \
+    --input_stddev 0.15 \
+    --max_steps 2 \
+    --load_checkpoint $EXP_NAME/model/checkpoint-$STEPS/data

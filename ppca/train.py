@@ -40,10 +40,11 @@ def main(args):
         sys.exit(1)
 
     experiment = Experiment(args.experiment_dir)
+    hparams = experiment.load_hparams(model.ModelParams, args)
 
     # Create the model.
     dataset_value = make_dataset(dataset.DatasetParams(args))
-    model_ops = model.PpcaModel(dataset_value, model.ModelParams(args), model.TrainingParams(args), args.batch_size)
+    model_ops = model.PpcaModel(dataset_value, hparams, model.TrainingParams(args), args.batch_size)
 
     saver = tf.train.Saver()
     with tf.Session() as session:
