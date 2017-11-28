@@ -16,6 +16,6 @@ def normal_samples(params):
     The input batch generator.
     """
     def example():
-        return tf.reshape(tf.contrib.distributions.MultivariateNormalDiag(
-            params.input_mean, params.input_stddev).sample(sample_shape=[1]), [len(params.input_mean)])
+        return tf.contrib.distributions.MultivariateNormalDiag(
+            params.input_mean, params.input_stddev).sample(sample_shape=[1])[0]
     return tf.contrib.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example()).batch(params.batch_size)
