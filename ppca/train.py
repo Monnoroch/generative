@@ -12,30 +12,33 @@ def print_graph(session, model, step, data):
     """
     A helper function for printing key training characteristics.
     """
-    loss, mean, stddev = session.run(model.loss, model.data_dist_mean, model.data_dist_stddev)
+    loss, mean, stddev = session.run([model.loss, model.data_dist_mean, model.data_dist_stddev])
     print("Model on step %d has loss = %f" % (step, loss))
-    data["means"].append(mean)
-    data["stddevs"].append(stddev)
+    data["means"].append(mean.tolist())
+    data["stddevs"].append(stddev.tolist())
 
 
 def make_dataset(params):
     return dataset.normal_samples(params).make_one_shot_iterator()
 
 
-def format_means(means):
-    map(str, means)
+def format_list(values):
+    if type(values) is not list:
+        return "%f" % values
+    return "{%s}" % ",".join(map(format_list, values))
 
 
 def format_data(data):
     template = """
 means = %s;
 stddevs = %s;
+level = 0.035;
 
 Table[
   ContourPlot[
     {
-        PDF[MultinormalDistribution[{5, 10}, {{1.2^2, 0}, {0, 2.4^2} }], {x, y}],
-        PDF[MultinormalDistribution[means[[step]], stddevs[[step]]], {x, y}],
+        PDF[MultinormalDistribution[{5, 10}, {{1.2^2, 0}, {0, 2.4^2} }], {x, y}] == level,
+        PDF[MultinormalDistribution[means[[step]], stddevs[[step]]], {x, y}]  == level
     },
     {x, -1.5, 12.5},
     {y, -1.5, 12.5},
@@ -45,7 +48,7 @@ Table[
   {step, 1, Length[means]}
 ]
 """
-    return template % (format_means(data["means"]), format_stdevs(data["stddevs"]))
+    return template % (format_list(data["means"]), format_list(data["stddevs"]))
 
 
 def print_data(data):
@@ -107,6 +110,8 @@ def main(args):
 
         # Save experiment data.
         saver.save(session, experiment.checkpoint(global_step))
+
+    print_data(data)
 
 
 if __name__ == "__main__":
