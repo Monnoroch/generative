@@ -28,12 +28,14 @@ def format_list(values):
     return "{%s}" % ",".join(map(format_list, values))
 
 
+
 def format_data(data):
     template = """
 means = %s;
 stddevs = %s;
 level = 0.035;
 
+Export["ppca.avi",
 Table[
   ContourPlot[
     {
@@ -46,7 +48,7 @@ Table[
     MaxRecursion -> 10
   ],
   {step, 1, Length[means]}
-]
+]]
 """
     return template % (format_list(data["means"]), format_list(data["stddevs"]))
 
