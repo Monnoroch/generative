@@ -69,7 +69,7 @@ class PpcaModel(object):
             self.data_dist_mean, self.data_dist_stddev).sample(sample_shape=[1024])
 
         # Export summaries.
-        tf.summary.scalar("Loss/Log", self.loss)
+        tf.summary.scalar("Loss", self.loss)
         tf.summary.scalar("Stddev", self.stddev[0])
         for i in range(input_size):
             tf.summary.scalar("Bias/%d" % i, self.biases[i])
