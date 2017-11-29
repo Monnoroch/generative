@@ -8,17 +8,49 @@ from ppca import model, dataset
 from common.experiment import Experiment
 
 
-def print_graph(session, model, step):
+def print_graph(session, model, step, data):
     """
     A helper function for printing key training characteristics.
     """
-    loss = session.run(model.loss)
+    loss, mean, stddev = session.run(model.loss, model.data_dist_mean, model.data_dist_stddev)
     print("Model on step %d has loss = %f" % (step, loss))
+    data["means"].append(mean)
+    data["stddevs"].append(stddev)
 
 
 def make_dataset(params):
     return dataset.normal_samples(params).make_one_shot_iterator()
 
+
+def format_means(means):
+    map(str, means)
+
+
+def format_data(data):
+    template = """
+means = %s;
+stddevs = %s;
+
+Table[
+  ContourPlot[
+    {
+        PDF[MultinormalDistribution[{5, 10}, {{1.2^2, 0}, {0, 2.4^2} }], {x, y}],
+        PDF[MultinormalDistribution[means[[step]], stddevs[[step]]], {x, y}],
+    },
+    {x, -1.5, 12.5},
+    {y, -1.5, 12.5},
+    PlotRange -> Full,
+    MaxRecursion -> 10
+  ],
+  {step, 1, Length[means]}
+]
+"""
+    return template % (format_means(data["means"]), format_stdevs(data["stddevs"]))
+
+
+def print_data(data):
+    with open("train-data.txt", "w") as f:
+        f.write(format_data(data))
 
 def main(args):
     """
@@ -42,6 +74,11 @@ def main(args):
     experiment = Experiment(args.experiment_dir)
     hparams = experiment.load_hparams(model.ModelParams, args)
 
+    data = {
+        "means": [],
+        "stddevs": [],
+    }
+
     # Create the model.
     dataset_value = make_dataset(dataset.DatasetParams(args))
     model_ops = model.PpcaModel(dataset_value, hparams, model.TrainingParams(args), args.batch_size)
@@ -59,7 +96,7 @@ def main(args):
         # The main training loop. On each interation we train the model on one minibatch.
         global_step = session.run(model_ops.global_step)
         for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step)
+            print_graph(session, model_ops, global_step, data)
             session.run(model_ops.train)
 
             # Increment global step.
