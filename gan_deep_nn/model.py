@@ -26,6 +26,7 @@ class TrainingParams(object):
         self.g_learning_rate = args.g_learning_rate
         self.d_l2_reg = args.d_l2_reg
         self.g_l2_reg = args.g_l2_reg
+        self.optimizer = args.optimizer
 
 
 class GanModel(object):
@@ -78,6 +79,7 @@ class GanModel(object):
         with tf.variable_scope("discriminator") as scope:
             discriminator_variables = [v for v in tf.global_variables() if v.name.startswith(scope.name)]
             l2_reg_discriminator_variables = [v for v in discriminator_variables if v.name.find("weights") != -1]
+
         # Optionally add L2 regularization to the discriminator.
         if training_params.d_l2_reg != 0.0:
             self.discriminator_loss += training_params.d_l2_reg * add_n(
@@ -87,19 +89,39 @@ class GanModel(object):
                 [tf.nn.l2_loss(v) for v in l2_reg_generator_variables])
 
         # Optimize losses with Adam optimizer.
-        self.generator_train = tf.train.AdamOptimizer(training_params.g_learning_rate).minimize(
+        optimizer = tf.train.AdamOptimizer
+        if training_params.optimizer == "adam":
+            optimizer = tf.train.AdamOptimizer
+        elif training_params.optimizer == "sgd":
+            optimizer = tf.train.GradientDescentOptimizer
+        elif training_params.optimizer.startswith("momentum"):
+            class Optimizer(tf.train.MomentumOptimizer):
+                def __init__(self, lr):
+                    super(Optimizer, self).__init__(lr, float(training_params.optimizer[len("momentum:"):]), use_nesterov=False)
+            optimizer = Optimizer
+        elif training_params.optimizer.startswith("nesterov"):
+            class Optimizer(tf.train.MomentumOptimizer):
+                def __init__(self, lr):
+                    super(Optimizer, self).__init__(lr, float(training_params.optimizer[len("nesterov:"):]), use_nesterov=True)
+            optimizer = Optimizer
+        elif training_params.optimizer == "adadelta":
+            optimizer = tf.train.AdadeltaOptimizer
+        elif training_params.optimizer == "adagrad":
+            optimizer = tf.train.AdagradOptimizer
+
+        self.generator_train = optimizer(training_params.g_learning_rate).minimize(
             self.generator_loss, var_list=generator_variables, name="train_generator")
-        self.discriminator_train = tf.train.AdamOptimizer(training_params.d_learning_rate).minimize(
+        self.discriminator_train = optimizer(training_params.d_learning_rate).minimize(
             self.discriminator_loss, var_list=discriminator_variables, name="train_discriminator")
 
         # Add useful graphs to Tensorboard.
         self.average_probability_real = tf.reduce_mean(tf.sigmoid(self.real_ratings))
         self.average_probability_fake = tf.reduce_mean(tf.sigmoid(self.generated_ratings))
 
-        tf.summary.scalar("D/cost", self.discriminator_loss)
-        tf.summary.scalar("G/cost", self.generator_loss)
-        tf.summary.scalar("P_real_on_real", self.average_probability_real)
-        tf.summary.scalar("P_real_on_fake", self.average_probability_fake)
+        tf.summary.scalar("Cost/D", self.discriminator_loss)
+        tf.summary.scalar("Cost/G", self.generator_loss)
+        tf.summary.scalar("P/real_on_real", self.average_probability_real)
+        tf.summary.scalar("P/real_on_fake", self.average_probability_fake)
         tf.summary.image("Real data", self.real_input)
         tf.summary.image("Fake data", self.generated)
         self.summaries = tf.summary.merge_all()
