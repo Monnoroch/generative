@@ -1,11 +1,7 @@
 import math
 import tensorflow as tf
 
-
-def add_n(arr):
-  if not arr:
-    return 0
-  return tf.add_n(arr)
+from common.math import add_n
 
 
 class TrainingParams(object):
