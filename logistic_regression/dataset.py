@@ -29,4 +29,4 @@ def gmm_classes(params):
                     scale=input_stddev[labels[i]]).sample(sample_shape=[1]))
         samples = tf.concat(components, 0)
         return labels, samples
-    return tf.contrib.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())
+    return tf.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())

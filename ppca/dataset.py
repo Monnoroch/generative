@@ -18,4 +18,4 @@ def normal_samples(params):
     def example():
         return tf.contrib.distributions.MultivariateNormalDiag(
             params.input_mean, params.input_stddev).sample(sample_shape=[1])[0]
-    return tf.contrib.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example()).batch(params.batch_size)
+    return tf.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example()).batch(params.batch_size)

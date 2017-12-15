@@ -20,4 +20,4 @@ def linear_dependent_with_error(params):
         noise = tf.random_normal([params.batch_size], mean=0., stddev=1.)
         labels = params.input_param1 * samples + params.input_param2 + noise
         return labels, samples
-    return tf.contrib.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())
+    return tf.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())
