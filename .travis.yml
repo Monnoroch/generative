@@ -6,7 +6,7 @@ python:
   - "2.7"
 
 install:
-  - pip install tensorflow pillow
+  - pip install pillow==4.3.0 tensorflow==1.4.1
 
 script:
   - tests/run_tests.sh
