@@ -25,7 +25,7 @@ def small_mnist_dataset(target_directory, train=True, factor=2):
             (image_size/factor, image_size/factor), Image.ANTIALIAS)
         new_images.append(numpy.frombuffer(image.tobytes(), numpy.float32))
     images = numpy.array(new_images)
-    return tf.contrib.data.Dataset.from_tensor_slices((images, labels))
+    return tf.data.Dataset.from_tensor_slices((images, labels))
 
 
 def mnist_dataset(target_directory, train=True):
@@ -35,7 +35,7 @@ def mnist_dataset(target_directory, train=True):
     Arguments:
     - train - whether to load train or test files.
     """
-    return tf.contrib.data.Dataset.from_tensor_slices(_load_mnist(target_directory, train))
+    return tf.data.Dataset.from_tensor_slices(_load_mnist(target_directory, train))
 
 
 def _load_mnist(target_directory, train=True):
