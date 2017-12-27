@@ -58,6 +58,7 @@ def main(args):
     parser.add_argument("--normalized_input", default=False, action="store_true", help="Whether to normalize inputs to [-1, 1]")
     parser.add_argument("--use_leaky_relus", default=False, action="store_true", help="Whether to use leaky relus")
     parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
+    parser.add_argument("--input_noise", default="", type=str, help="The input noise to use in the format: initial_stddev:steps_to_anneal")
     args = parser.parse_args(args)
 
     experiment = Experiment(args.experiment_dir)

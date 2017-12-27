@@ -16,6 +16,7 @@ class ModelParams(object):
         self.use_gen_batch_norm = args.use_gen_batch_norm
         self.normalized_input = args.normalized_input
         self.use_leaky_relus = args.use_leaky_relus
+        self.input_noise = args.input_noise
 
 
 class TrainingParams(object):
@@ -55,12 +56,21 @@ class GanModel(object):
         if not training_params.training:
             return
 
+        if model_params.input_noise != "":
+            [initial, steps] = model_params.input_noise.split(":")
+            initial = float(initial)
+            fsteps = tf.constant(float(int(steps)))
+            global_step = tf.cast(self.global_step, dtype=tf.float32)
+            self.noise_stddev = tf.maximum(1e-5, initial * (1. - global_step/fsteps))
+
         # Get the real and the fake inputs.
         self.real_input = dataset.get_next()
         input_shape = self.real_input[0].shape
+        self.real_input += self.input_noise(model_params, input_shape)
         self.generator_input_batch = self.generator_input(training_params.batch_size, [model_params.latent_space_size])
         with tf.variable_scope("generator"):
-            self.generated = self.generator(self.generator_input_batch, input_shape, model_params)
+            self.generated = self.generator(
+                self.generator_input_batch, input_shape, model_params) + self.input_noise(model_params, input_shape)
 
         with tf.variable_scope("generator", reuse=True):
             sample_side_size = 8
@@ -125,6 +135,8 @@ class GanModel(object):
         tf.summary.scalar("Cost/G", self.generator_loss)
         tf.summary.scalar("P/real_on_real", self.average_probability_real)
         tf.summary.scalar("P/real_on_fake", self.average_probability_fake)
+        if model_params.input_noise != "":
+            tf.summary.scalar("Noise stddev", self.noise_stddev)
         tf.summary.image(
             "Real data",
             image_grid(unnormalize_images(real_input_sample, model_params), sample_side_size),
@@ -209,6 +221,18 @@ class GanModel(object):
         Generator input data are just samples from N(0, 1).
         """
         return tf.random_normal(tf.concat([[samples], output_shape], 0), 0., 1.)
+
+    def input_noise(self, hparams, shape):
+        if hparams.input_noise == "":
+            return 0.
+
+        [initial, steps] = hparams.input_noise.split(":")
+        initial = float(initial)
+        steps = tf.constant(int(steps))
+        return tf.cond(
+            self.global_step > steps,
+            lambda: tf.zeros(shape),
+            lambda: tf.random_normal(shape, 0., self.noise_stddev))
 
 def get_optimizer(optimizer_name):
     optimizer = tf.train.AdamOptimizer
