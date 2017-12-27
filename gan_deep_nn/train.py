@@ -22,7 +22,7 @@ def make_dataset(args):
     test_dataset = mnist_dataset(args.dataset_dir, train=False)
     dataset = train_dataset.concatenate(test_dataset)
     dataset = dataset.map(lambda image, label: image) # Only images.
-    dataset = dataset.map(lambda image: tf.reshape(image, [14*2, 14*2, 1]))
+    dataset = dataset.map(lambda image: tf.reshape(image, [28, 28, 1]))
     if args.normalized_input:
         dataset = dataset.map(lambda image: (image - 0.5) * 2)
     dataset = dataset.repeat()
