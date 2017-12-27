@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from gan_deep_nn import model
 from common.experiment import Experiment
-from datasets.mnist import small_mnist_dataset
+from datasets.mnist import mnist_dataset
 
 
 def print_graph(session, model, step):
@@ -18,11 +18,11 @@ def print_graph(session, model, step):
 
 
 def make_dataset(args):
-    train_dataset = small_mnist_dataset(args.dataset_dir, train=True)
-    test_dataset = small_mnist_dataset(args.dataset_dir, train=False)
+    train_dataset = mnist_dataset(args.dataset_dir, train=True)
+    test_dataset = mnist_dataset(args.dataset_dir, train=False)
     dataset = train_dataset.concatenate(test_dataset)
     dataset = dataset.map(lambda image, label: image) # Only images.
-    dataset = dataset.map(lambda image: tf.reshape(image, [14, 14, 1]))
+    dataset = dataset.map(lambda image: tf.reshape(image, [28, 28, 1]))
     dataset = dataset.repeat()
     dataset = dataset.batch(args.batch_size)
     return dataset.make_one_shot_iterator()
