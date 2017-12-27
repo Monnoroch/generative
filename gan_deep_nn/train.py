@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from gan_deep_nn import model
 from common.experiment import Experiment
-from datasets.mnist import small_mnist_dataset
+from datasets.mnist import mnist_dataset
 
 
 def print_graph(session, model, step):
