@@ -7,7 +7,7 @@ class TrainingParams(object):
     """
     All training hyperparameters that should be configured from command line should go here.
     """
-    def __init__(self, args, training):
+    def __init__(self, args):
         self.learning_rate = args.learning_rate
         self.l2_reg = args.l2_reg
 

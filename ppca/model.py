@@ -99,5 +99,5 @@ def batch_matmul(matrix, vector_batch, batch_size):
     output_size = matrix.shape[0].value
     vector_batch = tf.expand_dims(vector_batch, 2)
     return tf.reshape(
-        tf.stack(map(lambda vector: tf.matmul(matrix, vector), tf.unstack(vector_batch, num=batch_size))),
+        tf.stack(list(map(lambda vector: tf.matmul(matrix, vector), tf.unstack(vector_batch, num=batch_size)))),
         [-1, output_size])
