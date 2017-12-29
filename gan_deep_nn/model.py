@@ -1,6 +1,8 @@
 import tensorflow as tf
 
 from common.math import add_n, product
+from common.summary import clip_images, image_grid
+
 
 class ModelParams(object):
     """
@@ -26,7 +28,7 @@ class TrainingParams(object):
         self.g_learning_rate = args.g_learning_rate
         self.d_l2_reg = args.d_l2_reg
         self.g_l2_reg = args.g_l2_reg
-        self.optimizer = args.optimizer
+        self.smooth_labels = args.smooth_labels
 
 
 class GanModel(object):
@@ -51,9 +53,18 @@ class GanModel(object):
         # Get the real and the fake inputs.
         self.real_input = dataset.get_next()
         input_shape = self.real_input[0].shape
-        self.generator_input = self.generator_input(training_params.batch_size, [model_params.latent_space_size])
+        self.generator_input_batch = self.generator_input(training_params.batch_size, [model_params.latent_space_size])
         with tf.variable_scope("generator"):
-            self.generated = self.generator(self.generator_input, input_shape, model_params)
+            self.generated = self.generator(
+                self.generator_input_batch, input_shape, model_params)
+
+        with tf.variable_scope("generator", reuse=True):
+            sample_side_size = 8
+            samples = sample_side_size**2
+            batches = int(samples / training_params.batch_size) + 1
+            real_input_sample = tf.concat(list(map(lambda _: dataset.get_next(), range(batches))), axis=0)[:samples,:,:,:]
+            generator_input_batch = self.generator_input(samples, [model_params.latent_space_size])
+            generated_sample = self.generator(generator_input_batch, input_shape, model_params)
 
         # Get discriminator logits for both inputs.
         with tf.variable_scope("discriminator"):
@@ -63,8 +74,11 @@ class GanModel(object):
             self.generated_ratings = self.discriminator(self.generated, model_params)
 
         # Discriminator loss minimizes the discrimination error on both real and fake inputs.
+        labels = tf.ones_like(self.real_ratings)
+        if training_params.smooth_labels:
+            labels = labels * 0.9
         self.loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=tf.ones_like(self.real_ratings), logits=self.real_ratings))
+            labels=labels, logits=self.real_ratings))
         self.loss_generated = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             labels=tf.zeros_like(self.generated_ratings), logits=self.generated_ratings))
         self.discriminator_loss = self.loss_generated + self.loss_real
@@ -89,29 +103,9 @@ class GanModel(object):
                 [tf.nn.l2_loss(v) for v in l2_reg_generator_variables])
 
         # Optimize losses with Adam optimizer.
-        optimizer = tf.train.AdamOptimizer
-        if training_params.optimizer == "adam":
-            optimizer = tf.train.AdamOptimizer
-        elif training_params.optimizer == "sgd":
-            optimizer = tf.train.GradientDescentOptimizer
-        elif training_params.optimizer.startswith("momentum"):
-            class Optimizer(tf.train.MomentumOptimizer):
-                def __init__(self, lr):
-                    super(Optimizer, self).__init__(lr, float(training_params.optimizer[len("momentum:"):]), use_nesterov=False)
-            optimizer = Optimizer
-        elif training_params.optimizer.startswith("nesterov"):
-            class Optimizer(tf.train.MomentumOptimizer):
-                def __init__(self, lr):
-                    super(Optimizer, self).__init__(lr, float(training_params.optimizer[len("nesterov:"):]), use_nesterov=True)
-            optimizer = Optimizer
-        elif training_params.optimizer == "adadelta":
-            optimizer = tf.train.AdadeltaOptimizer
-        elif training_params.optimizer == "adagrad":
-            optimizer = tf.train.AdagradOptimizer
-
-        self.generator_train = optimizer(training_params.g_learning_rate).minimize(
+        self.generator_train = tf.train.AdamOptimizer(training_params.g_learning_rate).minimize(
             self.generator_loss, var_list=generator_variables, name="train_generator")
-        self.discriminator_train = optimizer(training_params.d_learning_rate).minimize(
+        self.discriminator_train = tf.train.AdamOptimizer(training_params.d_learning_rate).minimize(
             self.discriminator_loss, var_list=discriminator_variables, name="train_discriminator")
 
         # Add useful graphs to Tensorboard.
@@ -122,8 +116,8 @@ class GanModel(object):
         tf.summary.scalar("Cost/G", self.generator_loss)
         tf.summary.scalar("P/real_on_real", self.average_probability_real)
         tf.summary.scalar("P/real_on_fake", self.average_probability_fake)
-        tf.summary.image("Real data", self.real_input)
-        tf.summary.image("Fake data", self.generated)
+        tf.summary.image("Real data", image_grid(clip_images(real_input_sample), sample_side_size), max_outputs=1)
+        tf.summary.image("Fake data", image_grid(clip_images(generated_sample), sample_side_size), max_outputs=1)
         self.summaries = tf.summary.merge_all()
 
     def discriminator(self, input, hparams):
@@ -141,8 +135,8 @@ class GanModel(object):
         for i in range(len(hparams.discriminator_features)):
             features = new_features
             new_features = hparams.discriminator_features[i]
-            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.1))
-            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0.1, shape=[new_features]))
+            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
+            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
             hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
             if hparams.dropout != 0.0:
                 hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
@@ -150,8 +144,8 @@ class GanModel(object):
         # Final linear layer to compute the classifier's logits.
         features = new_features
         output_size = 1
-        weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.1))
-        biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[output_size]))
+        weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.02))
+        biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
         return tf.matmul(hidden_layer, weights) + biases
 
     def generator(self, input, output_shape, hparams):
@@ -168,15 +162,15 @@ class GanModel(object):
         for i in range(len(hparams.generator_features)):
             features = new_features
             new_features = hparams.generator_features[i]
-            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.1))
-            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0.1, shape=[new_features]))
+            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
+            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
             hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
 
         # Final linear layer to generate the example.
         features = new_features
         output_size = product(output_shape)
-        weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.1))
-        biases = tf.get_variable("biases_out", initializer=tf.constant(0.1, shape=[output_size]))
+        weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.02))
+        biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
         return tf.reshape(tf.matmul(hidden_layer, weights) + biases, tf.concat([[batch_size], output_shape], axis=0))
 
     def generator_input(self, samples, output_shape):

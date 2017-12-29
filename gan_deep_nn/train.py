@@ -23,6 +23,8 @@ def make_dataset(args):
     dataset = train_dataset.concatenate(test_dataset)
     dataset = dataset.map(lambda image, label: image) # Only images.
     dataset = dataset.map(lambda image: tf.reshape(image, [28, 28, 1]))
+    if args.normalized_input:
+        dataset = dataset.map(lambda image: (image - 0.5) * 2)
     dataset = dataset.repeat()
     dataset = dataset.batch(args.batch_size)
     return dataset.make_one_shot_iterator()
@@ -37,9 +39,9 @@ def main(args):
     parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
     parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
-    parser.add_argument("--d_learning_rate", type=float, default=0.01, help="The discriminator learning rate")
-    parser.add_argument("--g_learning_rate", type=float, default=0.02, help="The generator learning rate")
-    parser.add_argument("--d_l2_reg", type=float, default=0.0005, help="The discriminator L2 regularization parameter")
+    parser.add_argument("--d_learning_rate", type=float, default=0.005, help="The discriminator learning rate")
+    parser.add_argument("--g_learning_rate", type=float, default=0.005, help="The generator learning rate")
+    parser.add_argument("--d_l2_reg", type=float, default=0., help="The discriminator L2 regularization parameter")
     parser.add_argument("--g_l2_reg", type=float, default=0., help="The generator L2 regularization parameter")
     parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
     parser.add_argument("--dropout", type=float, default=0.5, help="The dropout rate to use in the descriminator")
@@ -48,7 +50,7 @@ def main(args):
     parser.add_argument("--generator_features", default=[], action="append", type=int, help="The number of features in generators hidden layers")
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     parser.add_argument("--latent_space_size", default=128, type=int, help="The number of features in generator input")
-    parser.add_argument("--optimizer", default="adam", type=str, help="The optimizer to use for training")
+    parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
     args = parser.parse_args(args)
 
     experiment = Experiment(args.experiment_dir)
@@ -85,7 +87,8 @@ def main(args):
             session.run(model_ops.increment_global_step)
             global_step = session.run(model_ops.global_step)
             # And export all summaries to tensorboard.
-            summary_writer.add_summary(session.run(model_ops.summaries), global_step)
+            if global_step % 10 == 0:
+                summary_writer.add_summary(session.run(model_ops.summaries), global_step)
 
         # Save experiment data.
         saver.save(session, experiment.checkpoint(global_step))
