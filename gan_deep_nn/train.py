@@ -45,20 +45,12 @@ def main(args):
     parser.add_argument("--g_l2_reg", type=float, default=0., help="The generator L2 regularization parameter")
     parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
     parser.add_argument("--dropout", type=float, default=0.5, help="The dropout rate to use in the descriminator")
-    parser.add_argument("--gen_dropout", type=float, default=0.0, help="The dropout rate to use in the generator")
     parser.add_argument("--discriminator_steps", type=int, default=1, help="The number of steps to train the descriminator on each iteration")
     parser.add_argument("--generator_steps", type=int, default=1, help="The number of steps to train the generator on each iteration")
     parser.add_argument("--generator_features", default=[], action="append", type=int, help="The number of features in generators hidden layers")
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     parser.add_argument("--latent_space_size", default=128, type=int, help="The number of features in generator input")
-    parser.add_argument("--optimizer", default="adam", type=str, help="The optimizer to use for training the discriminator")
-    parser.add_argument("--gen_optimizer", default="adam", type=str, help="The optimizer to use for training the generator")
-    parser.add_argument("--use_batch_norm", default=False, action="store_true", help="Whether to use batch normalization in the discriminator")
-    parser.add_argument("--use_gen_batch_norm", default=False, action="store_true", help="Whether to use batch normalization in the generator")
-    parser.add_argument("--normalized_input", default=False, action="store_true", help="Whether to normalize inputs to [-1, 1]")
-    parser.add_argument("--use_leaky_relus", default=False, action="store_true", help="Whether to use leaky relus")
     parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
-    parser.add_argument("--input_noise", default="", type=str, help="The input noise to use in the format: initial_stddev:steps_to_anneal")
     args = parser.parse_args(args)
 
     experiment = Experiment(args.experiment_dir)
@@ -97,8 +89,6 @@ def main(args):
             # And export all summaries to tensorboard.
             if global_step % 10 == 0:
                 summary_writer.add_summary(session.run(model_ops.summaries), global_step)
-            if global_step % 5000 == 0:
-                saver.save(session, experiment.checkpoint(global_step))
 
         # Save experiment data.
         saver.save(session, experiment.checkpoint(global_step))

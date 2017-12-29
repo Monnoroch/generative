@@ -8,15 +8,9 @@ class ModelParams(object):
     """
     def __init__(self, args):
         self.dropout = args.dropout
-        self.gen_dropout = args.gen_dropout
         self.generator_features = args.generator_features
         self.discriminator_features = args.discriminator_features
         self.latent_space_size = args.latent_space_size
-        self.use_batch_norm = args.use_batch_norm
-        self.use_gen_batch_norm = args.use_gen_batch_norm
-        self.normalized_input = args.normalized_input
-        self.use_leaky_relus = args.use_leaky_relus
-        self.input_noise = args.input_noise
 
 
 class TrainingParams(object):
@@ -33,7 +27,6 @@ class TrainingParams(object):
         self.d_l2_reg = args.d_l2_reg
         self.g_l2_reg = args.g_l2_reg
         self.optimizer = args.optimizer
-        self.gen_optimizer = args.gen_optimizer
         self.smooth_labels = args.smooth_labels
 
 
@@ -56,21 +49,13 @@ class GanModel(object):
         if not training_params.training:
             return
 
-        if model_params.input_noise != "":
-            [initial, steps] = model_params.input_noise.split(":")
-            initial = float(initial)
-            fsteps = tf.constant(float(int(steps)))
-            global_step = tf.cast(self.global_step, dtype=tf.float32)
-            self.noise_stddev = tf.maximum(1e-5, initial * (1. - global_step/fsteps))
-
         # Get the real and the fake inputs.
         self.real_input = dataset.get_next()
         input_shape = self.real_input[0].shape
-        self.real_input += self.input_noise(model_params, input_shape)
         self.generator_input_batch = self.generator_input(training_params.batch_size, [model_params.latent_space_size])
         with tf.variable_scope("generator"):
             self.generated = self.generator(
-                self.generator_input_batch, input_shape, model_params) + self.input_noise(model_params, input_shape)
+                self.generator_input_batch, input_shape, model_params)
 
         with tf.variable_scope("generator", reuse=True):
             sample_side_size = 8
@@ -117,15 +102,10 @@ class GanModel(object):
                 [tf.nn.l2_loss(v) for v in l2_reg_generator_variables])
 
         # Optimize losses with Adam optimizer.
-        optimizer = get_optimizer(training_params.optimizer)
-        gen_optimizer = get_optimizer(training_params.gen_optimizer)
-
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            self.generator_train = optimizer(training_params.g_learning_rate).minimize(
-                self.generator_loss, var_list=generator_variables, name="train_generator")
-            self.discriminator_train = gen_optimizer(training_params.d_learning_rate).minimize(
-                self.discriminator_loss, var_list=discriminator_variables, name="train_discriminator")
+        self.generator_train = tf.train.AdamOptimizer(training_params.g_learning_rate).minimize(
+            self.generator_loss, var_list=generator_variables, name="train_generator")
+        self.discriminator_train = tf.train.AdamOptimizer(training_params.d_learning_rate).minimize(
+            self.discriminator_loss, var_list=discriminator_variables, name="train_discriminator")
 
         # Add useful graphs to Tensorboard.
         self.average_probability_real = tf.reduce_mean(tf.sigmoid(self.real_ratings))
@@ -135,16 +115,8 @@ class GanModel(object):
         tf.summary.scalar("Cost/G", self.generator_loss)
         tf.summary.scalar("P/real_on_real", self.average_probability_real)
         tf.summary.scalar("P/real_on_fake", self.average_probability_fake)
-        if model_params.input_noise != "":
-            tf.summary.scalar("Noise stddev", self.noise_stddev)
-        tf.summary.image(
-            "Real data",
-            image_grid(unnormalize_images(real_input_sample, model_params), sample_side_size),
-            max_outputs=1)
-        tf.summary.image(
-            "Fake data",
-            image_grid(unnormalize_images(generated_sample, model_params), sample_side_size),
-            max_outputs=1)
+        tf.summary.image("Real data", image_grid(clip_images(real_input_sample), sample_side_size), max_outputs=1)
+        tf.summary.image("Fake data", image_grid(clip_images(generated_sample), sample_side_size), max_outputs=1)
         self.summaries = tf.summary.merge_all()
 
     def discriminator(self, input, hparams):
@@ -163,13 +135,8 @@ class GanModel(object):
             features = new_features
             new_features = hparams.discriminator_features[i]
             weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
-            hidden_layer = tf.matmul(hidden_layer, weights)
-            if hparams.use_batch_norm:
-                hidden_layer = tf.layers.batch_normalization(hidden_layer)
-            else:
-                biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
-                hidden_layer = hidden_layer + biases
-            hidden_layer = relu(hidden_layer, hparams)
+            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
+            hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
             if hparams.dropout != 0.0:
                 hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
 
@@ -195,26 +162,15 @@ class GanModel(object):
             features = new_features
             new_features = hparams.generator_features[i]
             weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
-            hidden_layer = tf.matmul(hidden_layer, weights)
-            if hparams.use_gen_batch_norm:
-                hidden_layer = tf.layers.batch_normalization(hidden_layer)
-            else:
-                biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
-                hidden_layer = hidden_layer + biases
-            hidden_layer = relu(hidden_layer, hparams)
-            if hparams.gen_dropout != 0.0:
-                hidden_layer = tf.nn.dropout(hidden_layer, hparams.gen_dropout)
+            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
+            hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
 
         # Final linear layer to generate the example.
         features = new_features
         output_size = product(output_shape)
         weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.02))
         biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
-        result = tf.reshape(tf.matmul(hidden_layer, weights) + biases, tf.concat([[batch_size], output_shape], axis=0))
-        if hparams.normalized_input:
-            return tf.nn.tanh(result)
-        else:
-            return result
+        return tf.reshape(tf.matmul(hidden_layer, weights) + biases, tf.concat([[batch_size], output_shape], axis=0))
 
     def generator_input(self, samples, output_shape):
         """
@@ -222,51 +178,9 @@ class GanModel(object):
         """
         return tf.random_normal(tf.concat([[samples], output_shape], 0), 0., 1.)
 
-    def input_noise(self, hparams, shape):
-        if hparams.input_noise == "":
-            return 0.
 
-        [initial, steps] = hparams.input_noise.split(":")
-        initial = float(initial)
-        steps = tf.constant(int(steps))
-        return tf.cond(
-            self.global_step > steps,
-            lambda: tf.zeros(shape),
-            lambda: tf.random_normal(shape, 0., self.noise_stddev))
-
-def get_optimizer(optimizer_name):
-    optimizer = tf.train.AdamOptimizer
-    if optimizer_name == "adam":
-        optimizer = tf.train.AdamOptimizer
-    elif optimizer_name == "sgd":
-        optimizer = tf.train.GradientDescentOptimizer
-    elif optimizer_name.startswith("momentum"):
-        class Optimizer(tf.train.MomentumOptimizer):
-            def __init__(self, lr):
-                super(Optimizer, self).__init__(lr, float(optimizer_name[len("momentum:"):]), use_nesterov=False)
-        optimizer = Optimizer
-    elif optimizer_name.startswith("nesterov"):
-        class Optimizer(tf.train.MomentumOptimizer):
-            def __init__(self, lr):
-                super(Optimizer, self).__init__(lr, float(optimizer_name[len("nesterov:"):]), use_nesterov=True)
-        optimizer = Optimizer
-    elif optimizer_name == "adadelta":
-        optimizer = tf.train.AdadeltaOptimizer
-    elif optimizer_name == "adagrad":
-        optimizer = tf.train.AdagradOptimizer
-    return optimizer
-
-
-def unnormalize_images(images, hparams):
-    if hparams.normalized_input:
-        images = images / 2 + 0.5
+def clip_images(images):
     return tf.minimum(tf.maximum(images, 0.0), 1.0)
-
-def relu(input, hparams):
-    if hparams.use_leaky_relus:
-        return tf.nn.leaky_relu(input)
-    else:
-        return tf.nn.relu(input)
 
 
 def image_grid(image_batch, max_side_size, batch_size=None):
