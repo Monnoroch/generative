@@ -26,7 +26,6 @@ class TrainingParams(object):
         self.g_learning_rate = args.g_learning_rate
         self.d_l2_reg = args.d_l2_reg
         self.g_l2_reg = args.g_l2_reg
-        self.optimizer = args.optimizer
         self.smooth_labels = args.smooth_labels
 
 
