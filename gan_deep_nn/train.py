@@ -23,8 +23,6 @@ def make_dataset(args):
     dataset = train_dataset.concatenate(test_dataset)
     dataset = dataset.map(lambda image, label: image) # Only images.
     dataset = dataset.map(lambda image: tf.reshape(image, [28, 28, 1]))
-    if args.normalized_input:
-        dataset = dataset.map(lambda image: (image - 0.5) * 2)
     dataset = dataset.repeat()
     dataset = dataset.batch(args.batch_size)
     return dataset.make_one_shot_iterator()
@@ -51,6 +49,7 @@ def main(args):
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     parser.add_argument("--latent_space_size", default=128, type=int, help="The number of features in generator input")
     parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
+    parser.add_argument("--conv_dis", default=False, action="store_true", help="Whether to use a convolutional discriminator or fully connected")
     args = parser.parse_args(args)
 
     experiment = Experiment(args.experiment_dir)

@@ -13,6 +13,7 @@ class ModelParams(object):
         self.generator_features = args.generator_features
         self.discriminator_features = args.discriminator_features
         self.latent_space_size = args.latent_space_size
+        self.conv_dis = args.conv_dis
 
 
 class TrainingParams(object):
@@ -125,28 +126,46 @@ class GanModel(object):
         Discriminator is a theee-layer fully connected NN.
         """
         # First fully connected layer with N features and optional dropout.
-        batch_size = tf.shape(input)[0]
-        input_size = product(input.shape[1:])
-        input = tf.reshape(input, [batch_size, input_size])
+        if hparams.conv_dis:
+            hidden_layer = input
+            new_features = input.shape[-1].value
 
-        new_features = input_size
-        hidden_layer = input
+            for i in range(len(hparams.discriminator_features)):
+                features = new_features
+                new_features = hparams.discriminator_features[i]
+                filters = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([4, 4, features, new_features], stddev=0.02))
+                biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
+                hidden_layer = tf.nn.conv2d(hidden_layer, filters, strides=(1, 2, 2, 1), padding="SAME") + biases
 
-        for i in range(len(hparams.discriminator_features)):
             features = new_features
-            new_features = hparams.discriminator_features[i]
-            weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
-            biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
-            hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
-            if hparams.dropout != 0.0:
-                hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
+            output_size = 1
+            filters = tf.get_variable("weights_out", initializer=tf.truncated_normal([4, 4, features, output_size], stddev=0.02))
+            biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
+            return tf.nn.conv2d(hidden_layer, filters, strides=(1, 1, 1, 1), padding="VALID") + biases
 
-        # Final linear layer to compute the classifier's logits.
-        features = new_features
-        output_size = 1
-        weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.02))
-        biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
-        return tf.matmul(hidden_layer, weights) + biases
+        else:
+            batch_size = tf.shape(input)[0]
+            input_size = product(input.shape[1:])
+            input = tf.reshape(input, [batch_size, input_size])
+
+            hidden_layer = input
+            new_features = input_size
+
+            for i in range(len(hparams.discriminator_features)):
+                features = new_features
+                new_features = hparams.discriminator_features[i]
+                weights = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([features, new_features], stddev=0.02))
+                biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
+                hidden_layer = tf.nn.relu(tf.matmul(hidden_layer, weights) + biases)
+                if hparams.dropout != 0.0:
+                    hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
+
+            # Final linear layer to compute the classifier's logits.
+            features = new_features
+            output_size = 1
+            weights = tf.get_variable("weights_out", initializer=tf.truncated_normal([features, output_size], stddev=0.02))
+            biases = tf.get_variable("biases_out", initializer=tf.constant(0., shape=[output_size]))
+            return tf.matmul(hidden_layer, weights) + biases
 
     def generator(self, input, output_shape, hparams):
         """

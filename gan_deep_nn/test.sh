@@ -21,6 +21,7 @@ python gan_deep_nn/train.py \
     --discriminator_features 10 \
     --discriminator_features 15 \
     --batch_size 10 \
+    --conv_dis \
     --max_steps $STEPS
 
 python gan_deep_nn/train.py \
