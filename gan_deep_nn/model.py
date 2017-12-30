@@ -135,7 +135,9 @@ class GanModel(object):
                 new_features = hparams.discriminator_features[i]
                 filters = tf.get_variable("weights_%d" % i, initializer=tf.truncated_normal([4, 4, features, new_features], stddev=0.02))
                 biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
-                hidden_layer = tf.nn.conv2d(hidden_layer, filters, strides=(1, 2, 2, 1), padding="SAME") + biases
+                hidden_layer = tf.nn.relu(tf.nn.conv2d(hidden_layer, filters, strides=(1, 2, 2, 1), padding="SAME") + biases)
+                if hparams.dropout != 0.0:
+                    hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout)
 
             features = new_features
             output_size = 1
