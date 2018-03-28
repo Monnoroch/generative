@@ -1,6 +1,6 @@
 echo "Running $0..."
 
-set +e
+set -e
 
 STEPS=2
 EXP_NAME=test-exps/ppca

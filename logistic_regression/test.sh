@@ -1,6 +1,6 @@
 echo "Running $0..."
 
-set +e
+set -e
 
 python logistic_regression/train.py --experiment_dir test-exps/logistic_regression \
     --l2_reg 0.01 --learning_rate 0.01 --input_mean 4 --input_stddev 1.5 --input_mean -2 --input_stddev 1 \

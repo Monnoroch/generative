@@ -23,8 +23,6 @@ def make_dataset(args):
     dataset = train_dataset.concatenate(test_dataset)
     dataset = dataset.map(lambda image, label: image) # Only images.
     dataset = dataset.map(lambda image: tf.reshape(image, [28, 28, 1]))
-    if args.normalized_input:
-        dataset = dataset.map(lambda image: (image - 0.5) * 2)
     dataset = dataset.repeat()
     dataset = dataset.batch(args.batch_size)
     return dataset.make_one_shot_iterator()

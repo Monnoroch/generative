@@ -1,6 +1,6 @@
 echo "Running $0..."
 
-set +e
+set -e
 
 NUM_STEPS=2
 
