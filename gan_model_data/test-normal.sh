@@ -1,6 +1,6 @@
 echo "Running $0..."
 
-set +e
+set -e
 
 python gan_model_data/train.py --experiment_dir test-exps/gan-normal \
     --d_l2_reg 0.01 --input_mean 7 --input_stddev 1.5 --input_mean -1 --input_stddev 2 \
