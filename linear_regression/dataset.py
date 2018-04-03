@@ -15,9 +15,10 @@ def linear_dependent_with_error(params):
     """
     The input batch generator.
     """
-    def example():
-        samples = tf.random_uniform([params.batch_size], 0., 10.)
-        noise = tf.random_normal([params.batch_size], mean=0., stddev=1.)
-        labels = params.input_param1 * samples + params.input_param2 + noise
-        return labels, samples
-    return tf.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())
+    with tf.name_scope("dataset"):
+        def example():
+            samples = tf.random_uniform([params.batch_size], 0., 10.)
+            noise = tf.random_normal([params.batch_size], mean=0., stddev=1.)
+            labels = params.input_param1 * samples + params.input_param2 + noise
+            return labels, samples
+        return tf.data.Dataset.from_tensors([0.]).repeat().map(lambda x: example())
