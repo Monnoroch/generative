@@ -7,4 +7,4 @@ set -e
 # tests/run_test.sh "gan_model_data/test-nn.sh"
 # tests/run_test.sh "gan_model_data/test-samples.sh"
 # tests/run_test.sh "gan_deep_nn/test.sh"
-tests/run_test.sh "em_linear_regression/test.sh"
+tests/run_test.sh "em_logistic_regression/test.sh"

@@ -9,13 +9,13 @@ class EmLogisticRegressionModel(LogisticRegressionModel):
     """
     EM-based logistic Regression model -- a linear model for binary classification.
     """
-    def __init__(self, dataset, training_params, batch_size):
+    def __init__(self, dataset, training_params):
         self.variables = []
         self.l2_reg_variables = []
 
         _, samples = self.input(dataset)
         predicted_labels = self.discriminator(samples)
-        latent_variables = self.get_latent(predicted_labels, batch_size)
+        latent_variables = self.get_latent(predicted_labels, training_params.batch_size)
         self.loss = self.get_loss(latent_variables, predicted_labels, training_params)
 
         # Train the model with Adam.
@@ -32,5 +32,5 @@ class EmLogisticRegressionModel(LogisticRegressionModel):
         """
         Transform visible variables into latent space.
         """
-        latent = tf.contrib.distributions.Categorical(probs=class_probs).sample(shape=batch_size)
+        latent = tf.contrib.distributions.Categorical(probs=class_probs).sample(sample_shape=batch_size)
         return tf.stop_gradient(latent)
