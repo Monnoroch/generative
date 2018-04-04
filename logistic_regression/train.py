@@ -1,11 +1,9 @@
 import argparse
 import sys
 
-import numpy as np
-import tensorflow as tf
-
 from logistic_regression import model
 from common.experiment import Experiment, load_checkpoint
+from common.training_loop import TrainingLoopParams, training_loop
 from datasets import gaussian_mixture
 
 
@@ -21,6 +19,11 @@ def make_dataset(params, training_params):
     return gaussian_mixture.dataset(params).batch(training_params.batch_size).make_one_shot_iterator()
 
 
+def train(session, global_step, model_ops):
+    print_graph(session, model_ops, global_step)
+    session.run(model_ops.train)
+
+
 def main(args):
     """
     The main function to train the model.
@@ -29,6 +32,7 @@ def main(args):
     Experiment.add_arguments(parser)
     model.TrainingParams.add_arguments(parser)
     gaussian_mixture.DatasetParams.add_arguments(parser)
+    TrainingLoopParams.add_arguments(parser)
     args = parser.parse_args(args)
 
     experiment = Experiment.from_args(args)
@@ -38,31 +42,8 @@ def main(args):
     dataset = make_dataset(gaussian_mixture.DatasetParams(args), training_params)
     model_ops = model.LogisticRegressionModel(dataset, training_params)
 
-    saver = tf.train.Saver()
-    with tf.Session() as session:
-        # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
-        checkpoint = load_checkpoint(args)
-        if checkpoint:
-            saver.restore(session, checkpoint)
-        else:
-            session.run(tf.global_variables_initializer())
-
-        summary_writer = tf.summary.FileWriter(experiment.summaries_dir(), session.graph)
-
-        # The main training loop. On each interation we train the model on one minibatch.
-        global_step = session.run(model_ops.global_step)
-        for _ in range(training_params.max_steps):
-            print_graph(session, model_ops, global_step)
-            session.run(model_ops.train)
-
-            # Increment global step.
-            session.run(model_ops.increment_global_step)
-            global_step = session.run(model_ops.global_step)
-            # And export all summaries to tensorboard.
-            summary_writer.add_summary(session.run(model_ops.summaries), global_step)
-
-        # Save experiment data.
-        saver.save(session, experiment.checkpoint(global_step))
+    training_loop(TrainingLoopParams(args), experiment, model_ops.summaries,
+        lambda session, global_step: train(session, global_step, model_ops), checkpoint=load_checkpoint(args))
 
 
 if __name__ == "__main__":

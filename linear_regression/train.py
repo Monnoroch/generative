@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from linear_regression import model, dataset
 from common.experiment import Experiment, load_checkpoint
+from common.training_loop import TrainingLoopParams, training_loop
 
 
 def print_graph(session, model, step):
@@ -20,6 +21,11 @@ def make_dataset(params):
     return dataset.linear_dependent_with_error(params).make_one_shot_iterator()
 
 
+def train(session, global_step, model_ops):
+    print_graph(session, model_ops, global_step)
+    session.run(model_ops.train)
+
+
 def main(args):
     """
     The main function to train the model.
@@ -30,8 +36,8 @@ def main(args):
     parser.add_argument("--l2_reg", type=float, default=0.0005, help="The L2 regularization parameter")
     parser.add_argument("--input_param1", type=float, default=[], help="The mean of the input dataset", action="append")
     parser.add_argument("--input_param2", type=float, default=[], help="The standard deviation of the input dataset", action="append")
-    parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
     Experiment.add_arguments(parser)
+    TrainingLoopParams.add_arguments(parser)
     args = parser.parse_args(args)
 
     experiment = Experiment.from_args(args)
@@ -40,31 +46,8 @@ def main(args):
     dataset_value = make_dataset(dataset.DatasetParams(args))
     model_ops = model.LinearRegressionModel(dataset_value, model.TrainingParams(args))
 
-    saver = tf.train.Saver()
-    with tf.Session() as session:
-        # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
-        checkpoint = load_checkpoint(args)
-        if checkpoint:
-            saver.restore(session, checkpoint)
-        else:
-            session.run(tf.global_variables_initializer())
-
-        summary_writer = tf.summary.FileWriter(experiment.summaries_dir(), session.graph)
-
-        # The main training loop. On each interation we train the model on one minibatch.
-        global_step = session.run(model_ops.global_step)
-        for _ in range(args.max_steps):
-            print_graph(session, model_ops, global_step)
-            session.run(model_ops.train)
-
-            # Increment global step.
-            session.run(model_ops.increment_global_step)
-            global_step = session.run(model_ops.global_step)
-            # And export all summaries to tensorboard.
-            summary_writer.add_summary(session.run(model_ops.summaries), global_step)
-
-        # Save experiment data.
-        saver.save(session, experiment.checkpoint(global_step))
+    training_loop(TrainingLoopParams(args), experiment, model_ops.summaries,
+        lambda session, global_step: train(session, global_step, model_ops), checkpoint=load_checkpoint(args))
 
 
 if __name__ == "__main__":
