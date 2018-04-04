@@ -5,7 +5,7 @@ import sys
 import tensorflow as tf
 
 from gan_deep_nn import model
-from common.experiment import Experiment
+from common.experiment import Experiment, load_checkpoint
 from datasets.mnist import mnist_dataset
 
 
@@ -34,8 +34,6 @@ def main(args):
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
     parser.add_argument("--dataset_dir", required=True, help="The path to the MNIST dataset files. If doesn't exist, the dataset will be downloaded")
-    parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
-    parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
     parser.add_argument("--d_learning_rate", type=float, default=0.005, help="The discriminator learning rate")
     parser.add_argument("--g_learning_rate", type=float, default=0.005, help="The generator learning rate")
@@ -49,9 +47,10 @@ def main(args):
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     parser.add_argument("--latent_space_size", default=128, type=int, help="The number of features in generator input")
     parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
+    Experiment.add_arguments(parser)
     args = parser.parse_args(args)
 
-    experiment = Experiment(args.experiment_dir)
+    experiment = Experiment.from_args(args)
     hparams = experiment.load_hparams(model.ModelParams, args)
 
     dataset = make_dataset(args)
@@ -62,8 +61,9 @@ def main(args):
     saver = tf.train.Saver()
     with tf.Session() as session:
         # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
-        if args.load_checkpoint:
-            saver.restore(session, args.load_checkpoint)
+        checkpoint = load_checkpoint(args)
+        if checkpoint:
+            saver.restore(session, checkpoint)
         else:
             session.run(tf.global_variables_initializer())
 

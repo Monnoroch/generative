@@ -60,8 +60,20 @@ class Experiment(object):
             json.dump(props, file, indent=2)
             file.write("\n")
 
+    @staticmethod
+    def from_args(args):
+        return Experiment(args.experiment_dir)
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument("--experiment_dir", required=True,
+            help="The experiment directory to store all the data")
+        parser.add_argument("--load_checkpoint",
+            help="Continue training from a checkpoint")
+
+def load_checkpoint(args):
+    return args.load_checkpoint
+
 def _create_if_not_existis(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
-
-
