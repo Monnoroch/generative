@@ -41,7 +41,7 @@ def main(args):
     # Create the model.
     training_params = TrainingParams(args)
     dataset = make_dataset(gaussian_mixture.DatasetParams(args), training_params)
-    model_ops = model.EmLogisticRegressionModel(dataset, training_params)
+    model_ops = model.UnsupervisedLogisticRegressionModel(dataset, training_params)
 
     training_loop(TrainingLoopParams(args), experiment, model_ops.summaries,
         lambda session, global_step: train(session, global_step, model_ops), checkpoint=load_checkpoint(args))

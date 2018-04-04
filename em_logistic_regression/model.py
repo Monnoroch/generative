@@ -5,7 +5,7 @@ from common.math import add_n
 from logistic_regression.model import LogisticRegressionModel
 
 
-class EmLogisticRegressionModel(LogisticRegressionModel):
+class UnsupervisedLogisticRegressionModel(LogisticRegressionModel):
     """
     EM-based logistic Regression model -- a linear model for binary classification.
     """
