@@ -43,10 +43,6 @@ class GanModel(object):
     The discriminator however is a deep fully connected NN. Dropout and weight decay are uesd to reguralize the model.
     """
     def __init__(self, model_params, dataset, training_params):
-        # Set up the global step.
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
-        self.increment_global_step = tf.assign_add(self.global_step, 1)
-
         if not training_params.training:
             return
 

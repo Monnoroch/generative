@@ -26,10 +26,6 @@ class PpcaModel(object):
     Probabilistic Principal Compoent Analysis model -- a linear latent variable model for generating samples.
     """
     def __init__(self, dataset, hparams, training_params, batch_size):
-        # Set up the global step.
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
-        self.increment_global_step = tf.assign_add(self.global_step, 1)
-
         # Compute the loss funstion -- joint maximum likelihood of visible and latent vasiables.
         sample = dataset.get_next()
         input_size = sample.shape[1].value
