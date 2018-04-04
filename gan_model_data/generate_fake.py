@@ -25,12 +25,15 @@ def main(args):
     generator_input = model_ops.generator_input(args.samples)
     generated = model_ops.generator(generator_input, hparams)
 
+    with tf.name_scope("global_step_tools"):
+        global_step_op = tf.Variable(0, name="global_step", trainable=False)
+
     saver = tf.train.Saver()
     with tf.Session() as session:
         # Initializing the model using a saved checkpoint.
         saver.restore(session, args.load_checkpoint)
 
-        global_step = session.run(model_ops.global_step)
+        global_step = session.run(global_step_op)
         print("Load model at step %d." % global_step)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         for sample in session.run(generated):

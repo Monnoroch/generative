@@ -33,6 +33,9 @@ def main(args):
     dataset = model.DatasetParams(args)
     model_ops = model.GanNormalModel(None, None, model.TrainingParams(None, training=False))
 
+    with tf.name_scope("global_step_tools"):
+        global_step_op = tf.Variable(0, name="global_step", trainable=False)
+
     real_samples = model_ops.data_batch(dataset, args.samples)
 
     saver = tf.train.Saver()
@@ -40,7 +43,7 @@ def main(args):
         # Initializing the model using a saved checkpoint.
         saver.restore(session, args.load_checkpoint)
 
-        global_step = session.run(model_ops.global_step)
+        global_step = session.run(global_step_op)
         print("Load model at step %d." % global_step)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         for sample in session.run(real_samples):
