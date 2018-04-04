@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from ppca import model, dataset
-from common.experiment import Experiment
+from common.experiment import Experiment, load_checkpoint
 
 
 def print_graph(session, model, step):
@@ -25,8 +25,6 @@ def main(args):
     The main function to train the model.
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
-    parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
-    parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
     parser.add_argument("--learning_rate", type=float, default=0.01, help="The learning rate")
     parser.add_argument("--l2_reg", type=float, default=0.0005, help="The L2 regularization parameter")
@@ -34,12 +32,13 @@ def main(args):
     parser.add_argument("--input_mean", type=float, default=[], help="The mean of the input dataset", action="append")
     parser.add_argument("--input_stddev", type=float, default=[], help="The standard deviation of the input dataset", action="append")
     parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
+    Experiment.add_arguments(parser)
     args = parser.parse_args(args)
     if len(args.input_mean) != len(args.input_stddev):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
-    experiment = Experiment(args.experiment_dir)
+    experiment = Experiment.from_args(args)
     hparams = experiment.load_hparams(model.ModelParams, args)
 
     # Create the model.
@@ -49,8 +48,9 @@ def main(args):
     saver = tf.train.Saver()
     with tf.Session() as session:
         # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
-        if args.load_checkpoint:
-            saver.restore(session, args.load_checkpoint)
+        checkpoint = load_checkpoint(args)
+        if checkpoint:
+            saver.restore(session, checkpoint)
         else:
             session.run(tf.global_variables_initializer())
 

@@ -4,7 +4,7 @@ import sys
 import tensorflow as tf
 
 from gan_model_data import model
-from common.experiment import Experiment
+from common.experiment import Experiment, load_checkpoint
 
 
 def print_graph(session, model, step, nn_generator):
@@ -24,8 +24,6 @@ def main(args):
     The main function to train the model.
     """
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
-    parser.add_argument("--experiment_dir", required=True, help="The experiment directory to store all the data")
-    parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
     parser.add_argument("--d_learning_rate", type=float, default=0.01, help="The discriminator learning rate")
     parser.add_argument("--g_learning_rate", type=float, default=0.02, help="The generator learning rate")
@@ -40,6 +38,7 @@ def main(args):
     parser.add_argument("--nn_generator", default=False, action="store_true", help="Whether to use a neural network as a generator")
     parser.add_argument("--generator_features", default=[], action="append", type=int, help="The number of features in generators hidden layers")
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
+    Experiment.add_arguments(parser)
     args = parser.parse_args(args)
     # Default input mean and stddev.
     if not args.input_mean:
@@ -50,7 +49,7 @@ def main(args):
         print("There must be the same number of input means and standard deviations.")
         sys.exit(1)
 
-    experiment = Experiment(args.experiment_dir)
+    experiment = Experiment.from_args(args)
     hparams = experiment.load_hparams(model.ModelParams, args)
 
     # Create the model.
@@ -59,8 +58,9 @@ def main(args):
     saver = tf.train.Saver()
     with tf.Session() as session:
         # Initializing the model. Either using a saved checkpoint or a ranrom initializer.
-        if args.load_checkpoint:
-            saver.restore(session, args.load_checkpoint)
+        checkpoint = load_checkpoint(args)
+        if checkpoint:
+            saver.restore(session, checkpoint)
         else:
             session.run(tf.global_variables_initializer())
 
