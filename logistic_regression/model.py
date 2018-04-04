@@ -11,7 +11,6 @@ class TrainingParams(object):
         self.learning_rate = args.learning_rate
         self.l2_reg = args.l2_reg
         self.batch_size = args.batch_size
-        self.max_steps = args.max_steps
 
     @staticmethod
     def add_arguments(parser):
@@ -21,8 +20,6 @@ class TrainingParams(object):
             help="The learning rate")
         parser.add_argument("--l2_reg", type=float, default=0.0005,
             help="The L2 regularization parameter")
-        parser.add_argument("--max_steps", type=int, default=2000,
-            help="The maximum number of steps to train training for")
 
 
 class LogisticRegressionModel(object):
@@ -31,11 +28,6 @@ class LogisticRegressionModel(object):
     This version of the model operates input data, generated from two normally distributed classes.
     """
     def __init__(self, dataset, training_params):
-        # Set up the global step.
-        with tf.name_scope("global_step_tools"):
-            self.global_step = tf.Variable(0, name="global_step", trainable=False)
-            self.increment_global_step = tf.assign_add(self.global_step, 1)
-
         self.variables = []
         self.l2_reg_variables = []
 
