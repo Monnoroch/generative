@@ -19,11 +19,6 @@ class LinearRegressionModel(object):
     normally distributed noise.
     """
     def __init__(self, dataset, training_params):
-        # Set up the global step.
-        with tf.name_scope("global_step_tools"):
-            self.global_step = tf.Variable(0, name="global_step", trainable=False)
-            self.increment_global_step = tf.assign_add(self.global_step, 1)
-
         self.variables = []
         self.l2_reg_variables = []
 
