@@ -10,6 +10,19 @@ class TrainingParams(object):
     def __init__(self, args):
         self.learning_rate = args.learning_rate
         self.l2_reg = args.l2_reg
+        self.batch_size = args.batch_size
+        self.max_steps = args.max_steps
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument("--batch_size", type=int, default=32,
+            help="The size of the minibatch")
+        parser.add_argument("--learning_rate", type=float, default=0.01,
+            help="The learning rate")
+        parser.add_argument("--l2_reg", type=float, default=0.0005,
+            help="The L2 regularization parameter")
+        parser.add_argument("--max_steps", type=int, default=2000,
+            help="The maximum number of steps to train training for")
 
 
 class LogisticRegressionModel(object):

@@ -4,8 +4,9 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from logistic_regression import model, dataset
+from logistic_regression import model
 from common.experiment import Experiment
+from datasets import gaussian_mixture
 
 
 def print_graph(session, model, step):
@@ -16,8 +17,8 @@ def print_graph(session, model, step):
     print("Model on step %d has loss = %f" % (step, loss))
 
 
-def make_dataset(params):
-    return dataset.gmm_classes(params).make_one_shot_iterator()
+def make_dataset(params, training_params):
+    return gaussian_mixture.dataset(params).repeat().batch(training_params.batch_size).make_one_shot_iterator()
 
 
 def main(args):
@@ -27,27 +28,16 @@ def main(args):
     parser = argparse.ArgumentParser(description="Train the gan-normal model.")
     parser.add_argument("--experiment_dir", required=True, help="The expriment directory to store all the data")
     parser.add_argument("--load_checkpoint", help="Continue training from a checkpoint")
-    parser.add_argument("--batch_size", type=int, default=32, help="The size of the minibatch")
-    parser.add_argument("--learning_rate", type=float, default=0.01, help="The learning rate")
-    parser.add_argument("--l2_reg", type=float, default=0.0005, help="The L2 regularization parameter")
-    parser.add_argument("--input_mean", type=float, default=[], help="The mean of the input dataset", action="append")
-    parser.add_argument("--input_stddev", type=float, default=[], help="The standard deviation of the input dataset", action="append")
-    parser.add_argument("--max_steps", type=int, default=2000, help="The maximum number of steps to train training for")
+    model.TrainingParams.add_arguments(parser)
+    gaussian_mixture.DatasetParams.add_arguments(parser)
     args = parser.parse_args(args)
-    # Default input mean and stddev.
-    if not args.input_mean:
-        args.input_mean.append(15.)
-    if not args.input_stddev:
-        args.input_stddev.append(7.)
-    if len(args.input_mean) != len(args.input_stddev):
-        print("There must be the same number of input means and standard deviations.")
-        sys.exit(1)
 
     experiment = Experiment(args.experiment_dir)
 
     # Create the model.
-    dataset_value = make_dataset(dataset.DatasetParams(args))
-    model_ops = model.LogisticRegressionModel(dataset_value, model.TrainingParams(args))
+    training_params = model.TrainingParams(args)
+    dataset = make_dataset(gaussian_mixture.DatasetParams(args), training_params)
+    model_ops = model.LogisticRegressionModel(dataset, training_params)
 
     saver = tf.train.Saver()
     with tf.Session() as session:
@@ -61,7 +51,7 @@ def main(args):
 
         # The main training loop. On each interation we train the model on one minibatch.
         global_step = session.run(model_ops.global_step)
-        for _ in range(args.max_steps):
+        for _ in range(training_params.max_steps):
             print_graph(session, model_ops, global_step)
             session.run(model_ops.train)
 
