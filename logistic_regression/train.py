@@ -18,7 +18,7 @@ def print_graph(session, model, step):
 
 
 def make_dataset(params, training_params):
-    return gaussian_mixture.dataset(params).repeat().batch(training_params.batch_size).make_one_shot_iterator()
+    return gaussian_mixture.dataset(params).batch(training_params.batch_size).make_one_shot_iterator()
 
 
 def main(args):
