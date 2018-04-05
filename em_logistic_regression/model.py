@@ -13,10 +13,14 @@ class UnsupervisedLogisticRegressionModel(LogisticRegressionModel):
         self.variables = []
         self.l2_reg_variables = []
 
-        _, samples = self.input(dataset)
-        predicted_labels = self.discriminator(samples)
-        latent_variables = self.get_latent(predicted_labels, training_params.batch_size)
-        self.loss = self.get_loss(latent_variables, predicted_labels, training_params)
+        labels, samples = self.input(dataset)
+        predicted_logits = self.discriminator(samples)
+        latent_variables = self.get_latent(predicted_logits, training_params)
+        self.expected_loss = self.get_loss(latent_variables, predicted_logits, training_params)
+        self.real_loss = self.get_loss(labels, predicted_logits, training_params)
+        self.loss = self.expected_loss
+
+        accuracy = self.accuracy(labels, predicted_logits, samples)
 
         # Train the model with Adam.
         with tf.name_scope("train"):
@@ -25,12 +29,20 @@ class UnsupervisedLogisticRegressionModel(LogisticRegressionModel):
 
         # Export summaries.
         with tf.name_scope("summaries"):
-            tf.summary.scalar("Loss", self.loss)
+            tf.summary.scalar("Loss on expected labels", self.expected_loss)
+            tf.summary.scalar("Loss", self.real_loss)
+            tf.summary.scalar("Accuracy", accuracy)
             self.summaries = tf.summary.merge_all()
 
-    def get_latent(self, class_probs, batch_size):
+    def get_latent(self, predicted_logits, training_params):
         """
         Transform visible variables into latent space.
         """
-        latent = tf.contrib.distributions.Categorical(probs=class_probs).sample(sample_shape=batch_size)
+        class_1_probs = tf.expand_dims(tf.nn.sigmoid(predicted_logits), 1)
+        class_0_probs = 1. - class_1_probs
+        class_probs = tf.concat([class_0_probs, class_1_probs], 1)
+        latent = []
+        for value in tf.unstack(class_probs, training_params.batch_size):
+            latent.append(tf.contrib.distributions.Categorical(probs=value).sample())
+        latent = tf.stack(latent)
         return tf.stop_gradient(latent)
