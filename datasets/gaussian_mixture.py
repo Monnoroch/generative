@@ -14,9 +14,9 @@ class DatasetParams(object):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument("--input_mean", type=float, default=[15.], action="append",
+        parser.add_argument("--input_mean", type=float, default=[], action="append",
             help="The mean of the dataset mode. The dataset can have multiple modes")
-        parser.add_argument("--input_stddev", type=float, default=[7.], action="append",
+        parser.add_argument("--input_stddev", type=float, default=[], action="append",
             help="The standard deviation of the dataset mode. The dataset can have multiple modes")
 
 def dataset(params):
