@@ -32,8 +32,10 @@ class LogisticRegressionModel(object):
         self.l2_reg_variables = []
 
         labels, samples = self.input(dataset)
-        predicted_labels = self.discriminator(samples)
-        self.loss = self.get_loss(labels, predicted_labels, training_params)
+        predicted_logits = self.discriminator(samples)
+        self.loss = self.get_loss(labels, predicted_logits, training_params)
+
+        accuracy = self.accuracy(labels, predicted_logits, samples)
 
         # Train the model with Adam.
         with tf.name_scope("train"):
@@ -43,6 +45,7 @@ class LogisticRegressionModel(object):
         # Export summaries.
         with tf.name_scope("summaries"):
             tf.summary.scalar("Loss", self.loss)
+            tf.summary.scalar("Accuracy", accuracy)
             self.summaries = tf.summary.merge_all()
 
     def input(self, dataset):
@@ -62,14 +65,19 @@ class LogisticRegressionModel(object):
             self.variables.append(biases)
             return input * weights + biases
 
-    def get_loss(self, labels, predicted_labels, training_params):
+    def get_loss(self, labels, predicted_logits, training_params):
         # Compute the loss funstion -- cross-entropy between real and predicted labels.
         with tf.name_scope("loss"):
             loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=tf.cast(labels, tf.float32), logits=predicted_labels))
+                labels=tf.cast(labels, tf.float32), logits=predicted_logits))
 
             # Add optional L2 regularization.
             if training_params.l2_reg != 0.0:
                 loss += training_params.l2_reg * add_n([tf.nn.l2_loss(v) for v in self.l2_reg_variables])
 
             return loss
+
+    def accuracy(self, labels, predicted_logits, samples):
+        predicted_labels = tf.cast(tf.greater(tf.nn.sigmoid(predicted_logits), 0.5), tf.int32)
+        self.debug_value = tf.concat([tf.expand_dims(samples, 1), tf.cast(tf.expand_dims(labels, 1), tf.float32), tf.cast(tf.expand_dims(predicted_labels, 1), tf.float32)], 1)
+        return tf.reduce_mean(tf.cast(tf.equal(labels, predicted_labels), tf.float32))
