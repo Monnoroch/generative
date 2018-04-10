@@ -15,12 +15,12 @@ class UnsupervisedLogisticRegressionModel(LogisticRegressionModel):
 
         labels, samples = self.input(dataset)
         predicted_logits = self.discriminator(samples)
-        latent_variables = self.get_latent(predicted_logits, training_params)
-        self.expected_loss = self.get_loss(latent_variables, predicted_logits, training_params)
-        self.real_loss = self.get_loss(labels, predicted_logits, training_params)
-        self.loss = self.expected_loss
+        latent_variables = self.get_latent(predicted_logits)
+        self.loss = self.get_loss(latent_variables, predicted_logits, training_params)
 
+        loss_on_real = self.get_loss(labels, predicted_logits, training_params)
         accuracy = self.accuracy(labels, predicted_logits, samples)
+        latents_accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, latent_variables), tf.float32))
 
         # Train the model with Adam.
         with tf.name_scope("train"):
@@ -29,20 +29,23 @@ class UnsupervisedLogisticRegressionModel(LogisticRegressionModel):
 
         # Export summaries.
         with tf.name_scope("summaries"):
-            tf.summary.scalar("Loss on expected labels", self.expected_loss)
-            tf.summary.scalar("Loss", self.real_loss)
+            tf.summary.scalar("Loss", loss_on_real)
+            tf.summary.scalar("Unsupervised loss", self.loss)
             tf.summary.scalar("Accuracy", accuracy)
+            tf.summary.scalar("Latents accuracy vs real labels", latents_accuracy)
+            tf.summary.scalar("Weight", self.variables[0][0])
+            tf.summary.scalar("Bias", self.variables[1][0])
             self.summaries = tf.summary.merge_all()
 
-    def get_latent(self, predicted_logits, training_params):
+    def get_latent(self, predicted_logits):
         """
         Transform visible variables into latent space.
         """
-        class_1_probs = tf.expand_dims(tf.nn.sigmoid(predicted_logits), 1)
-        class_0_probs = 1. - class_1_probs
-        class_probs = tf.concat([class_0_probs, class_1_probs], 1)
-        latent = []
-        for value in tf.unstack(class_probs, training_params.batch_size):
-            latent.append(tf.contrib.distributions.Categorical(probs=value).sample())
-        latent = tf.stack(latent)
+        # latent = []
+        # for value in tf.unstack(predicted_logits, training_params.batch_size):
+        #     prob_1 = tf.nn.sigmoid(value)
+        #     latent.append(tf.contrib.distributions.Categorical(probs=[1. - prob_1, prob_1]).sample())
+        # latent = tf.stack(latent)
+        # latent = tf.cast(tf.nn.sigmoid(predicted_logits) > 0.5, tf.int32)
+        latent = tf.nn.sigmoid(predicted_logits)
         return tf.stop_gradient(latent)

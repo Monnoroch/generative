@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+import numpy as np
+
 from em_logistic_regression import model
 from logistic_regression.model import TrainingParams
 from common.experiment import Experiment, load_checkpoint

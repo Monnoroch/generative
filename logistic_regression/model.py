@@ -46,7 +46,15 @@ class LogisticRegressionModel(object):
         with tf.name_scope("summaries"):
             tf.summary.scalar("Loss", self.loss)
             tf.summary.scalar("Accuracy", accuracy)
+            tf.summary.scalar("Weight", self.variables[0][0])
+            tf.summary.scalar("Bias", self.variables[1][0])
             self.summaries = tf.summary.merge_all()
+
+    def noise(self, labels, training_params, noise_level):
+        noised = []
+        for value in tf.unstack(labels, training_params.batch_size):
+            noised.append(tf.cond(tf.random_uniform((1,), 0., 1.)[0] > noise_level, lambda: 1 - value, lambda: value))
+        return tf.reshape(tf.stack(noised), (training_params.batch_size,))
 
     def input(self, dataset):
         with tf.name_scope("input"):
@@ -79,5 +87,4 @@ class LogisticRegressionModel(object):
 
     def accuracy(self, labels, predicted_logits, samples):
         predicted_labels = tf.cast(tf.greater(tf.nn.sigmoid(predicted_logits), 0.5), tf.int32)
-        self.debug_value = tf.concat([tf.expand_dims(samples, 1), tf.cast(tf.expand_dims(labels, 1), tf.float32), tf.cast(tf.expand_dims(predicted_labels, 1), tf.float32)], 1)
         return tf.reduce_mean(tf.cast(tf.equal(labels, predicted_labels), tf.float32))
