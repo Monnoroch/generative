@@ -62,6 +62,7 @@ def main(args):
     parser.add_argument("--stride", default=2, type=int, help="Convolution stride")
     parser.add_argument("--discriminator_filter_sizes", default=[], action="append", help="Convolution filter sizes for discriminator layers")
     parser.add_argument("--generator_filter_sizes", default=[], action="append", help="Convolution filter sizes for generator layers")
+    parser.add_argument("--leaky_relu", default=0., type=float, help="Leaky ReLU leakage parameter. use normal ReLU if zero")
     Experiment.add_arguments(parser)
     TrainingLoopParams.add_arguments(parser)
     args = parser.parse_args(args)

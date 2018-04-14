@@ -4,6 +4,7 @@ from common.math import add_n, product
 from common.summary import clip_images, image_grid
 from gan_deep_nn.model import GanModel
 
+
 class ModelParams(object):
     """
     All model hyperparameters that should be configured from command line should go here.
@@ -16,9 +17,14 @@ class ModelParams(object):
         self.stride = args.stride
         self.discriminator_filter_sizes = args.discriminator_filter_sizes
         self.generator_filter_sizes = args.generator_filter_sizes
+        self.leaky_relu = args.leaky_relu
 
 
 def relu(x, hparams):
+    if hparams.leaky_relu != 0.0:
+        f1 = 0.5 * (1 + hparams.leaky_relu)
+        f2 = 0.5 * (1 - hparams.leaky_relu)
+        return f1 * x + f2 * tf.abs(x)
     return tf.nn.relu(x)
 
 
