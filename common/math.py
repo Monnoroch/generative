@@ -7,6 +7,12 @@ def add_n(arr):
   return tf.add_n(arr)
 
 
+def prod(values):
+    result = 1
+    for value in values:
+        result *= value
+    return result
+
 def product(values):
     result = 1
     for value in values:

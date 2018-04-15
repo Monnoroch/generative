@@ -59,16 +59,24 @@ def main(args):
     parser.add_argument("--discriminator_features", default=[], action="append", type=int, help="The number of features in discriminators hidden layers")
     parser.add_argument("--latent_space_size", default=128, type=int, help="The number of features in generator input")
     parser.add_argument("--smooth_labels", default=False, action="store_true", help="Whether to use smooth or sharp labels")
-    parser.add_argument("--stride", default=2, type=int, help="Convolution stride")
-    parser.add_argument("--discriminator_filter_sizes", default=[], action="append", help="Convolution filter sizes for discriminator layers")
-    parser.add_argument("--generator_filter_sizes", default=[], action="append", help="Convolution filter sizes for generator layers")
+    parser.add_argument("--discriminator_strides", default=[], action="append", type=int, help="Convolution strides for discriminator layers")
+    parser.add_argument("--generator_strides", default=[], action="append", type=int, help="Convolution strides for generator layers")
+    parser.add_argument("--discriminator_filter_sizes", default=[], action="append", type=int, help="Convolution filter sizes for discriminator layers")
+    parser.add_argument("--generator_filter_sizes", default=[], action="append", type=int, help="Convolution filter sizes for generator layers")
     parser.add_argument("--leaky_relu", default=0., type=float, help="Leaky ReLU leakage parameter. use normal ReLU if zero")
     Experiment.add_arguments(parser)
     TrainingLoopParams.add_arguments(parser)
     args = parser.parse_args(args)
 
-    if len(args.discriminator_features) != len(args.discriminator_filter_sizes):
+    if len(args.discriminator_filter_sizes) != len(args.discriminator_features):
         raise Error("Discriminator must have one filter size for every layer")
+    if len(args.discriminator_strides) != len(args.discriminator_features):
+        raise Error("Discriminator must have one stride for every layer")
+
+    if len(args.generator_filter_sizes) != len(args.generator_features):
+        raise Error("Generator must have one filter size for every layer")
+    if len(args.generator_strides) != len(args.generator_features):
+        raise Error("Generator must have one stride for every layer")
 
     experiment = Experiment.from_args(args)
     hparams = experiment.load_hparams(model.ModelParams, args)

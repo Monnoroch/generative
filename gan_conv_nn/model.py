@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from common.math import add_n, product
+from common.math import add_n, prod, product
 from common.summary import clip_images, image_grid
 from gan_deep_nn.model import GanModel
 
@@ -14,10 +14,11 @@ class ModelParams(object):
         self.generator_features = args.generator_features
         self.discriminator_features = args.discriminator_features
         self.latent_space_size = args.latent_space_size
-        self.stride = args.stride
         self.discriminator_filter_sizes = args.discriminator_filter_sizes
         self.generator_filter_sizes = args.generator_filter_sizes
         self.leaky_relu = args.leaky_relu
+        self.discriminator_strides = args.discriminator_strides
+        self.generator_strides = args.generator_strides
 
 
 def relu(x, hparams):
@@ -52,7 +53,8 @@ class ConvGanModel(GanModel):
             filters = tf.get_variable("weights_%d" % i,
                 initializer=tf.constant(0., shape=[filter_size, filter_size, features, new_features]))
             biases = tf.get_variable("biases_%d" % i, initializer=tf.constant(0., shape=[new_features]))
-            hidden_layer = tf.nn.conv2d(hidden_layer, filters, strides=[1, hparams.stride, hparams.stride, 1], padding="SAME")
+            stride = hparams.discriminator_strides[i]
+            hidden_layer = tf.nn.conv2d(hidden_layer, filters, strides=[1, stride, stride, 1], padding="SAME")
             hidden_layer = relu(hidden_layer + biases, hparams)
             if hparams.dropout != 0.0:
                 hidden_layer = tf.nn.dropout(hidden_layer, hparams.dropout, shape=[input.shape[0], 1, 1, input.shape[3]])
@@ -76,7 +78,8 @@ class ConvGanModel(GanModel):
         hidden_layer = tf.expand_dims(tf.expand_dims(input, 1), 1)
         new_features = input_size
 
-        strides = [get_initial_stride(hparams.stride, len(hparams.generator_features), output_shape[1])] + [hparams.stride] * (len(hparams.generator_features) - 1)
+        if prod(hparams.generator_strides) != output_shape[1]:
+            raise Error("The total generator stride must be equal to the output shape")
 
         for i in range(len(hparams.generator_features)):
             features = new_features
@@ -85,7 +88,7 @@ class ConvGanModel(GanModel):
             filter_size = hparams.generator_filter_sizes[i]
             filters = tf.get_variable("weights_%d" % i,
                 initializer=tf.constant(0., shape=[filter_size, filter_size, new_features, features]))
-            stride = strides[i]
+            stride = hparams.generator_strides[i]
             new_shape = [hidden_layer.shape[0], hidden_layer.shape[1] * stride, hidden_layer.shape[2] * stride, new_features]
             hidden_layer = tf.nn.conv2d_transpose(
                 hidden_layer, filters, output_shape=new_shape, strides=[1, stride, stride, 1], padding="SAME")

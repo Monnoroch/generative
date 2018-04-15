@@ -21,12 +21,15 @@ python gan_conv_nn/train.py \
     --discriminator_features 15 \
     --discriminator_filter_sizes 4 \
     --discriminator_filter_sizes 3 \
+    --discriminator_strides 2 \
+    --discriminator_strides 3 \
     --generator_features 10 \
     --generator_features 5 \
     --generator_filter_sizes 2 \
     --generator_filter_sizes 3 \
-    --dropout 0.1 \
-    --stride 2
+    --generator_strides 14 \
+    --generator_strides 2 \
+    --dropout 0.1
 
 python gan_conv_nn/train.py \
     --experiment_dir $EXPERIMENT \
